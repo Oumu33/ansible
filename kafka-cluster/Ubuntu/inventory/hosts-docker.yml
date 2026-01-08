@@ -1,0 +1,31 @@
+---
+all:
+  children:
+    zookeeper:
+      hosts:
+        zookeeper-1:
+          ansible_host: zookeeper-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        zookeeper-2:
+          ansible_host: zookeeper-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        zookeeper-3:
+          ansible_host: zookeeper-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+    kafka:
+      hosts:
+        kafka-1:
+          ansible_host: kafka-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        kafka-2:
+          ansible_host: kafka-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        kafka-3:
+          ansible_host: kafka-3
+          ansible_connection: community.docker.docker
+          ansible_user: root

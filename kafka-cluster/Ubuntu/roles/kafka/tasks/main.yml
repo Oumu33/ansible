@@ -1,0 +1,85 @@
+---
+- name: 创建 kafka 用户
+  user:
+    name: "{{ kafka_user }}"
+    system: true
+    shell: /bin/false
+  become: true
+
+- name: 创建目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_user }}"
+    mode: '0755'
+  loop:
+    - "{{ kafka_install_dir }}"
+    - "{{ kafka_data_dir }}"
+  become: true
+
+- name: 下载 Kafka
+  get_url:
+    url: "https://downloads.apache.org/kafka/{{ kafka_version }}/kafka_2.13-{{ kafka_version }}.tgz"
+    dest: /tmp/kafka.tgz
+    timeout: 1800
+  become: true
+
+- name: 解压 Kafka
+  unarchive:
+    src: /tmp/kafka.tgz
+    dest: "{{ kafka_install_dir }}"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_user }}"
+  become: true
+
+- name: 生成配置文件
+  copy:
+    dest: "{{ kafka_install_dir }}/config/server.properties"
+    content: |
+      broker.id={{ groups['kafka'].index(inventory_hostname) }}
+      listeners=PLAINTEXT://{{ ansible_host }}:{{ kafka_port }}
+      advertised.listeners=PLAINTEXT://{{ ansible_host }}:{{ kafka_port }}
+      log.dirs={{ kafka_data_dir }}
+      zookeeper.connect=172.128.0.10:2181,172.128.0.11:2181,172.128.0.12:2181
+      num.network.threads=3
+      num.io.threads=8
+      socket.send.buffer.bytes=102400
+      socket.receive.buffer.bytes=102400
+      socket.request.max.bytes=104857600
+      log.retention.hours=168
+      log.segment.bytes=1073741824
+      log.retention.check.interval.ms=300000
+      zookeeper.connection.timeout.ms=18000
+  become: true
+
+- name: 创建 systemd 服务
+  copy:
+    dest: /etc/systemd/system/kafka.service
+    content: |
+      [Unit]
+      Description=Kafka
+      After=network.target zookeeper.service
+
+      [Service]
+      Type=simple
+      User={{ kafka_user }}
+      Group={{ kafka_user }}
+      WorkingDirectory={{ kafka_install_dir }}
+      ExecStart={{ kafka_install_dir }}/bin/kafka-server-start.sh {{ kafka_install_dir }}/config/server.properties
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  become: true
+
+- name: 启动 Kafka
+  systemd:
+    name: kafka
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true

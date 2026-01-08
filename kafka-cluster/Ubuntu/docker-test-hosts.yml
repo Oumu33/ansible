@@ -1,0 +1,75 @@
+version: '3.8'
+services:
+  zookeeper-1:
+    image: rockylinux-ansible-test:9
+    container_name: zookeeper-1
+    hostname: zookeeper-1
+    privileged: true
+    networks:
+      kafka-net:
+        ipv4_address: 172.128.0.10
+    command: tail -f /dev/null
+    ports:
+      - "2181:2181"
+  zookeeper-2:
+    image: rockylinux-ansible-test:9
+    container_name: zookeeper-2
+    hostname: zookeeper-2
+    privileged: true
+    networks:
+      kafka-net:
+        ipv4_address: 172.128.0.11
+    command: tail -f /dev/null
+    ports:
+      - "2182:2181"
+  zookeeper-3:
+    image: rockylinux-ansible-test:9
+    container_name: zookeeper-3
+    hostname: zookeeper-3
+    privileged: true
+    networks:
+      kafka-net:
+        ipv4_address: 172.128.0.12
+    command: tail -f /dev/null
+    ports:
+      - "2183:2181"
+  kafka-1:
+    image: rockylinux-ansible-test:9
+    container_name: kafka-1
+    hostname: kafka-1
+    privileged: true
+    networks:
+      kafka-net:
+        ipv4_address: 172.128.0.13
+    command: tail -f /dev/null
+    ports:
+      - "9092:9092"
+  kafka-2:
+    image: rockylinux-ansible-test:9
+    container_name: kafka-2
+    hostname: kafka-2
+    privileged: true
+    networks:
+      kafka-net:
+        ipv4_address: 172.128.0.14
+    command: tail -f /dev/null
+    ports:
+      - "9093:9092"
+  kafka-3:
+    image: rockylinux-ansible-test:9
+    container_name: kafka-3
+    hostname: kafka-3
+    privileged: true
+    networks:
+      kafka-net:
+        ipv4_address: 172.128.0.15
+    command: tail -f /dev/null
+    ports:
+      - "9094:9092"
+networks:
+  kafka-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.128.0.0/16
+          gateway: 172.128.0.1
