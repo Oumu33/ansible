@@ -1,0 +1,133 @@
+---
+- name: 创建 vector 用户
+  ansible.builtin.user:
+    name: "{{ vector_user }}"
+    system: true
+    shell: /bin/false
+    home: "/opt/vector"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+    mode: '0755'
+  loop:
+    - "/opt/vector"
+    - "{{ vector_config_path }}"
+    - "{{ vector_data_path }}"
+    - "{{ vector_log_path }}"
+  become: true
+
+- name: 从控制节点复制 vector
+  ansible.builtin.copy:
+    src: /tmp/vector-{{ vector_version }}-x86_64-unknown-linux-musl.tar.gz
+    dest: /tmp/vector.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 vector
+  ansible.builtin.unarchive:
+    src: /tmp/vector.tar.gz
+    dest: "/opt/vector"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+  become: true
+
+- name: 生成 vector 配置文件
+  ansible.builtin.copy:
+    dest: "{{ vector_config_path }}/vector.toml"
+    content: |
+      [sources.docker_logs]
+        type = "docker_logs"
+        include_containers = ["vmauth", "vmalert", "vmagent", "alertmanager", "grafana", "vmselect", "vminsert", "vmstorage"]
+
+      [sources.system_logs]
+        type = "file"
+        include = ["/var/log/**/*.log"]
+        read_from = "beginning"
+
+      [transforms.json_logs]
+        type = "remap"
+        inputs = ["docker_logs", "system_logs"]
+        source = '''
+          .timestamp = now()
+          .host = get_hostname!()
+          if exists(.message) {
+            .log_level = "info"
+          }
+        '''
+
+      [sinks.victorialogs]
+        type = "http"
+        inputs = ["json_logs"]
+        uri = "{{ vector_victorialogs_url }}"
+        encoding.codec = "json"
+        compression = "gzip"
+        batch.max_events = 1000
+        batch.timeout_secs = 10
+        request.headers = { "Content-Type" = "application/json" }
+
+      [sinks.console]
+        type = "console"
+        inputs = ["json_logs"]
+        encoding.codec = "json"
+        target = "stdout"
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+    mode: '0644'
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vector.service
+    content: |
+      [Unit]
+      Description=Vector
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ vector_user }}
+      Group={{ vector_user }}
+      WorkingDirectory=/opt/vector
+      ExecStart=/opt/vector/bin/vector --config {{ vector_config_path }}/vector.toml
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 vector 服务
+  ansible.builtin.systemd:
+    name: vector
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+  ignore_errors: true
+
+- name: 启动 vector（后台模式）
+  ansible.builtin.shell: |
+    nohup /opt/vector/bin/vector --config {{ vector_config_path }}/vector.toml \
+      > {{ vector_log_path }}/vector.log 2>&1 &
+    echo $! > {{ vector_log_path }}/vector.pid
+  become: true
+  ignore_errors: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/vector.tar.gz
+    state: absent
+  become: true

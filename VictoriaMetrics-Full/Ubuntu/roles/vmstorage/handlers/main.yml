@@ -1,0 +1,14 @@
+---
+# vmstorage 处理器
+
+- name: restart vmstorage
+  ansible.builtin.systemd:
+    name: vmstorage
+    state: restarted
+    daemon_reload: true
+  become: true
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true

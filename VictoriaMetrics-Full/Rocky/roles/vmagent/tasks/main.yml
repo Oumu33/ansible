@@ -1,0 +1,113 @@
+---
+- name: 创建 victoriametrics 用户
+  ansible.builtin.user:
+    name: "{{ vm_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ vm_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建安装目录
+  ansible.builtin.file:
+    path: "{{ vm_install_dir }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  loop:
+    - "{{ vmagent_config_path | dirname }}"
+    - "{{ vmagent_log_path }}"
+  become: true
+
+- name: 从控制节点复制 vmutils
+  ansible.builtin.copy:
+    src: /tmp/vmutils-linux-amd64-{{ victoriametrics_version }}.tar.gz
+    dest: /tmp/vmutils.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 vmutils
+  ansible.builtin.unarchive:
+    src: /tmp/vmutils.tar.gz
+    dest: "{{ vm_install_dir }}"
+    remote_src: true
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+  become: true
+
+- name: 生成 vmagent 配置文件
+  ansible.builtin.copy:
+    dest: "/etc/victoriametrics/vmagent/scrape.yml"
+    content: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+
+      scrape_configs:
+        - job_name: 'victoriametrics'
+          static_configs:
+            - targets: ['localhost:8481']
+
+        - job_name: 'vmagent'
+          static_configs:
+            - targets: ['localhost:8429']
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmagent
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vmagent.service
+    content: |
+      [Unit]
+      Description=VictoriaMetrics Agent
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ vm_user }}
+      Group={{ vm_user }}
+      WorkingDirectory={{ vm_install_dir }}
+      ExecStart={{ vm_install_dir }}/vmagent-prod \
+        -httpListenAddr=:{{ vmagent_port }} \
+        -promscrape.config={{ vmagent_config_path }} \
+        -remoteWrite.url={{ vmagent_remote_write_url }} \
+        -loggerOutput=stdout \
+        -loggerFormat=json
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 vmagent 服务
+  ansible.builtin.systemd:
+    name: vmagent
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/vmagent.tar.gz
+    state: absent
+  become: true

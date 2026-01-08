@@ -1,0 +1,123 @@
+---
+- name: 创建 victoriametrics 用户
+  ansible.builtin.user:
+    name: "{{ vm_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ vm_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建安装目录
+  ansible.builtin.file:
+    path: "{{ vm_install_dir }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  loop:
+    - "{{ vmalert_config_path | dirname }}"
+    - "{{ vmalert_log_path }}"
+  become: true
+
+- name: 从控制节点复制 vmalert
+  ansible.builtin.copy:
+    src: /tmp/victoria-metrics-linux-amd64-{{ victoriametrics_version }}-cluster.tar.gz
+    dest: /tmp/vmalert.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 vmalert
+  ansible.builtin.unarchive:
+    src: /tmp/vmalert.tar.gz
+    dest: "{{ vm_install_dir }}"
+    remote_src: true
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+  become: true
+
+- name: 生成 vmalert 告警规则文件
+  ansible.builtin.copy:
+    dest: "{{ vmalert_config_path }}"
+    content: |
+      groups:
+        - name: system
+          interval: 30s
+          rules:
+            - alert: HighCPUUsage
+              expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "High CPU usage on {{ $labels.instance }}"
+                description: "CPU usage is above 80% for 5 minutes"
+
+            - alert: HighMemoryUsage
+              expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+              annotations:
+                summary: "High memory usage on {{ $labels.instance }}"
+                description: "Memory usage is above 80% for 5 minutes"
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmalert
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vmalert.service
+    content: |
+      [Unit]
+      Description=VictoriaMetrics Alert
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ vm_user }}
+      Group={{ vm_user }}
+      WorkingDirectory={{ vm_install_dir }}
+      ExecStart={{ vm_install_dir }}/vmalert-prod \
+        -httpListenAddr=:{{ vmalert_port }} \
+        -rule={{ vmalert_config_path }} \
+        -notifier.url={{ vmalert_notifier_url }} \
+        -datasource.url=http://localhost:8481 \
+        -loggerOutput=stdout \
+        -loggerFormat=json
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 vmalert 服务
+  ansible.builtin.systemd:
+    name: vmalert
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/vmalert.tar.gz
+    state: absent
+  become: true

@@ -1,0 +1,11 @@
+---
+# VictoriaMetrics 存储节点部署 Playbook
+# 仅部署 vmstorage 存储节点
+
+- name: 部署 VictoriaMetrics 存储节点
+  hosts: vmstorage
+  gather_facts: true
+  become: true
+
+  roles:
+    - vmcluster

@@ -1,0 +1,37 @@
+---
+# VictoriaMetrics 集群默认变量
+
+# 版本配置
+vm_version: "v1.104.0"
+
+# 安装路径
+vm_install_dir: "/usr/local/bin"
+vm_data_dir: "/var/lib/victoriametrics"
+vm_config_dir: "/etc/victoriametrics"
+vm_log_dir: "/var/log/victoriametrics"
+
+# 用户配置
+vm_user: "victoriametrics"
+vm_group: "victoriametrics"
+vm_user_shell: "/bin/false"
+
+# 端口配置
+vmselect_port: 8481
+vminsert_port: 8480
+vmstorage_port: 8482
+
+# 性能配置
+vm_memory_limit: 4096
+vm_cache_size: 1048576
+vm_retention_period: "1"
+
+# 日志配置
+vm_log_level: "info"
+
+# 服务配置
+vm_service_state: "started"
+vm_service_enabled: true
+
+# 下载配置
+vm_download_timeout: 600
+vm_force_download: false

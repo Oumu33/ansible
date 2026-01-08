@@ -1,0 +1,82 @@
+---
+# VictoriaMetrics 监控栈全局变量
+
+# 版本
+victoriametrics_version: "v1.133.0"
+alertmanager_version: "v0.30.0"
+grafana_version: "12.3.1"
+
+# 安装目录
+vm_install_dir: "/opt/victoriametrics"
+vm_data_dir: "/var/lib/victoriametrics"
+vm_config_dir: "/etc/victoriametrics"
+vm_log_dir: "/var/log/victoriametrics"
+
+# 系统用户
+vm_user: "victoriametrics"
+
+# 主机IP地址配置 (修改这些IP即可更新所有配置)
+vmstorage_1_ip: "172.22.0.10"
+vmstorage_2_ip: "172.22.0.11"
+vmstorage_3_ip: "172.22.0.12"
+vminsert_1_ip: "172.22.0.13"
+vminsert_2_ip: "172.22.0.14"
+vminsert_3_ip: "172.22.0.15"
+vmselect_1_ip: "172.22.0.16"
+vmselect_2_ip: "172.22.0.17"
+vmselect_3_ip: "172.22.0.18"
+vmauth_1_ip: "172.22.0.19"
+vmalert_1_ip: "172.22.0.20"
+vmagent_1_ip: "172.22.0.21"
+alertmanager_1_ip: "172.22.0.22"
+grafana_1_ip: "172.22.0.23"
+victorialogs_1_ip: "172.22.0.24"
+vector_1_ip: "172.22.0.25"
+
+# vmstorage 配置
+vmstorage_port: 8482
+vmstorage_vminsert_port: 8400
+vmstorage_vmselect_port: 8401
+vmstorage_retention_period: "30d"
+vmstorage_memory_allowed_bytes: "2GB"
+
+# vminsert 配置
+vminsert_port: 8480
+vminsert_http_listen_addr: "0.0.0.0:8480"
+
+# vmselect 配置
+vmselect_port: 8481
+vmselect_http_listen_addr: "0.0.0.0:8481"
+vmselect_cache_size_bytes: "1GB"
+
+# vmauth 配置
+vmauth_port: 8427
+vmauth_http_listen_addr: "0.0.0.0:8427"
+
+# vmalert 配置
+vmalert_port: 8880
+vmalert_http_listen_addr: "0.0.0.0:8880"
+vmalert_notifier_url: "http://{{ alertmanager_1_ip }}:9093"
+vmalert_datasource_url: "http://{{ vmauth_1_ip }}:8427"
+
+# vmagent 配置
+vmagent_port: 8429
+vmagent_http_listen_addr: "0.0.0.0:8429"
+vmagent_remote_write_url: "http://{{ vmauth_1_ip }}:8427"
+
+# alertmanager 配置
+alertmanager_port: 9093
+alertmanager_web_listen_address: "0.0.0.0:9093"
+
+# grafana 配置
+grafana_port: 3000
+grafana_http_addr: "0.0.0.0"
+grafana_admin_user: "admin"
+grafana_admin_password: "admin"
+
+# 下载超时 (秒)
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

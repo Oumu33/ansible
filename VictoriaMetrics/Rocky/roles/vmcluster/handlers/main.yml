@@ -1,0 +1,25 @@
+---
+# VictoriaMetrics 集群处理器
+
+- name: reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart vmselect
+  ansible.builtin.systemd:
+    name: vmselect
+    state: restarted
+  become: true
+
+- name: restart vminsert
+  ansible.builtin.systemd:
+    name: vminsert
+    state: restarted
+  become: true
+
+- name: restart vmstorage
+  ansible.builtin.systemd:
+    name: vmstorage
+    state: restarted
+  become: true

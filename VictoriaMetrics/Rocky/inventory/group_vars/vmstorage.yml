@@ -1,0 +1,16 @@
+---
+# vmstorage 特定配置
+
+vmstorage_service_name: "vmstorage"
+vmstorage_binary: "vmstorage-prod"
+vmstorage_data_dir: "{{ vm_data_dir }}/vmstorage"
+vmstorage_log_file: "{{ vm_log_dir }}/vmstorage.log"
+
+# 存储配置
+vmstorage_retention_period: "{{ vm_retention_period | default('1') }}"
+vmstorage_memory_allowed_percent: 60
+vmstorage_small_merge_workers: 1
+vmstorage_big_merge_workers: 1
+
+# 启用指标
+vmstorage_enable_metrics: true

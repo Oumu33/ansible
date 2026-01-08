@@ -1,0 +1,144 @@
+---
+- name: 创建 grafana 用户
+  ansible.builtin.user:
+    name: "grafana"
+    system: true
+    shell: /bin/false
+    home: "/usr/share/grafana"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "grafana"
+    group: "grafana"
+    mode: '0755'
+  loop:
+    - "/usr/share/grafana"
+    - "{{ grafana_data_path }}"
+    - "{{ grafana_config_path }}"
+    - "{{ grafana_log_path }}"
+    - "/var/lib/grafana/plugins"
+  become: true
+
+- name: 从控制节点复制 grafana
+  ansible.builtin.copy:
+    src: /tmp/grafana-{{ grafana_version }}.linux-amd64.tar.gz
+    dest: /tmp/grafana.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 grafana
+  ansible.builtin.unarchive:
+    src: /tmp/grafana.tar.gz
+    dest: "/usr/share/grafana"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "grafana"
+    group: "grafana"
+  become: true
+
+- name: 生成 grafana 配置文件
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/grafana.ini"
+    content: |
+      [server]
+      http_addr = {{ grafana_http_addr }}
+      http_port = {{ grafana_port }}
+
+      [security]
+      admin_user = {{ grafana_admin_user }}
+      admin_password = {{ grafana_admin_password }}
+
+      [database]
+      type = sqlite3
+      path = {{ grafana_data_path }}/grafana.db
+
+      [log]
+      mode = console
+      level = info
+
+      [paths]
+      data = {{ grafana_data_path }}
+      logs = {{ grafana_log_path }}
+      plugins = /var/lib/grafana/plugins
+      provisioning = {{ grafana_config_path }}/provisioning
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+  notify: restart grafana
+
+- name: 创建 provisioning 目录
+  ansible.builtin.file:
+    path: "{{ grafana_config_path }}/provisioning/{{ item }}"
+    state: directory
+    owner: "grafana"
+    group: "grafana"
+    mode: '0755'
+  loop:
+    - datasources
+    - dashboards
+  become: true
+
+- name: 生成 datasource 配置
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/provisioning/datasources/victoriametrics.yml"
+    content: |
+      apiVersion: 1
+
+      datasources:
+        - name: VictoriaMetrics
+          type: prometheus
+          access: proxy
+          url: http://127.0.0.1:8427
+          isDefault: true
+          editable: true
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/grafana.service
+    content: |
+      [Unit]
+      Description=Grafana
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=grafana
+      Group=grafana
+      WorkingDirectory=/usr/share/grafana
+      ExecStart=/usr/share/grafana/bin/grafana server \
+        -config={{ grafana_config_path }}/grafana.ini \
+        -homepath=/usr/share/grafana
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 grafana 服务
+  ansible.builtin.systemd:
+    name: grafana
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/grafana.tar.gz
+    state: absent
+  become: true

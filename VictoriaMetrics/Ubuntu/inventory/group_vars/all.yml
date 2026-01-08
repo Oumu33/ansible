@@ -1,0 +1,57 @@
+---
+# VictoriaMetrics 集群全局变量配置
+
+# VictoriaMetrics 版本
+vm_version: "v1.133.0"
+
+# 安装目录
+vm_install_dir: "/usr/local/bin"
+vm_data_dir: "/var/lib/victoriametrics"
+vm_config_dir: "/etc/victoriametrics"
+vm_log_dir: "/var/log/victoriametrics"
+
+# 下载地址
+vm_download_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ vm_version }}"
+vm_cluster_download_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ vm_version }}/victoria-metrics-linux-amd64-{{ vm_version }}-cluster.tar.gz"
+
+# 系统用户
+vm_user: "victoriametrics"
+vm_group: "victoriametrics"
+vm_user_shell: "/bin/false"
+
+# vmselect 配置
+vmselect_port: 8481
+vmselect_listen_addr: "0.0.0.0:{{ vmselect_port }}"
+vmselect_cache_size: "1048576"
+vmselect_max_concurrent_inserts: 1000
+vmselect_storage_nodes: "{{ groups['vmstorage'] | map('extract', hostvars, ['ansible_host']) | map('regex_replace', '^(.*)$', '\\1:' + vmstorage_port | string) | list | join(',') }}"
+
+# vminsert 配置
+vminsert_port: 8480
+vminsert_listen_addr: "0.0.0.0:{{ vminsert_port }}"
+vminsert_storage_nodes: "{{ groups['vmstorage'] | map('extract', hostvars, ['ansible_host']) | map('regex_replace', '^(.*)$', '\\1:' + vmstorage_port | string) | list | join(',') }}"
+vminsert_max_concurrent_inserts: 1000
+vminsert_max_insert_request_size: 33554432
+
+# vmstorage 配置
+vmstorage_port: 8482
+vmstorage_listen_addr: "0.0.0.0:{{ vmstorage_port }}"
+vmstorage_vminsert_addr: "0.0.0.0:8400"
+vmstorage_vmselect_addr: "0.0.0.0:8401"
+vmstorage_retention_period: "1"
+
+# 日志级别
+vm_log_level: "info"
+
+# 内存限制 (MB)
+vm_memory_limit: 4096
+
+# 下载超时 (秒)
+vm_download_timeout: 600
+
+# 是否强制重新下载
+vm_force_download: false
+
+# 服务状态
+vm_service_state: "started"
+vm_service_enabled: true

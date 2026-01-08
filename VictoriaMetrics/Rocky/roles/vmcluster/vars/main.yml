@@ -1,0 +1,15 @@
+---
+# VictoriaMetrics 集群角色变量
+
+# 集群信息
+vm_cluster_name: "victoriametrics-cluster"
+vm_cluster_env: "production"
+
+# 备份配置
+vm_backup_enabled: true
+vm_backup_dir: "/var/backups/victoriametrics"
+vm_backup_retention_days: 7
+
+# 监控配置
+vm_monitoring_enabled: true
+vm_metrics_port: 8428

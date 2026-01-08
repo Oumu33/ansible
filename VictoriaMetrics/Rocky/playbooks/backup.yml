@@ -1,0 +1,60 @@
+---
+# VictoriaMetrics 数据备份 Playbook
+# 备份 vmstorage 数据
+
+- name: 备份 VictoriaMetrics 数据
+  hosts: vmstorage
+  gather_facts: true
+  become: true
+
+  vars:
+    backup_timestamp: "{{ ansible_date_time.epoch }}"
+    backup_dir: "{{ vm_backup_dir | default('/var/backups/victoriametrics') }}"
+    retention_days: "{{ vm_backup_retention_days | default(7) }}"
+
+  tasks:
+    - name: 创建备份目录
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: "{{ vm_user }}"
+        group: "{{ vm_group }}"
+        mode: '0755'
+
+    - name: 停止 vmstorage 服务
+      ansible.builtin.systemd:
+        name: vmstorage
+        state: stopped
+      when: vm_backup_enabled | default(true)
+
+    - name: 创建数据备份
+      ansible.builtin.archive:
+        path: "{{ vmstorage_data_dir }}"
+        dest: "{{ backup_dir }}/vmstorage-backup-{{ backup_timestamp }}.tar.gz"
+        owner: "{{ vm_user }}"
+        group: "{{ vm_group }}"
+        mode: '0644'
+
+    - name: 启动 vmstorage 服务
+      ansible.builtin.systemd:
+        name: vmstorage
+        state: started
+      when: vm_backup_enabled | default(true)
+
+    - name: 清理旧备份文件
+      ansible.builtin.find:
+        paths: "{{ backup_dir }}"
+        patterns: "vmstorage-backup-*.tar.gz"
+        age: "{{ retention_days }}d"
+      register: old_backups
+
+    - name: 删除旧备份文件
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.matched > 0
+
+    - name: 显示备份信息
+      ansible.builtin.debug:
+        msg: "备份完成: {{ backup_dir }}/vmstorage-backup-{{ backup_timestamp }}.tar.gz"
