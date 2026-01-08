@@ -1,0 +1,9 @@
+---
+# 部署 Kibana
+- name: 部署 Kibana
+  hosts: kibana
+  gather_facts: true
+  become: true
+
+  roles:
+    - kibana

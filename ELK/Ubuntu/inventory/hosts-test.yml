@@ -1,0 +1,50 @@
+---
+# ELK 集群测试主机清单（Docker 容器）
+# 用于在 Docker 容器中测试 Ansible 部署
+
+all:
+  children:
+    elk:
+      hosts:
+        elasticsearch-1:
+          ansible_host: 172.21.0.10
+          ansible_user: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        elasticsearch-2:
+          ansible_host: 172.21.0.11
+          ansible_user: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        elasticsearch-3:
+          ansible_host: 172.21.0.12
+          ansible_user: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        logstash-1:
+          ansible_host: 172.21.0.13
+          ansible_user: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        kibana-1:
+          ansible_host: 172.21.0.14
+          ansible_user: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+        filebeat-1:
+          ansible_host: 172.21.0.15
+          ansible_user: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+    elasticsearch:
+      hosts:
+        elasticsearch-1:
+        elasticsearch-2:
+        elasticsearch-3:
+
+    logstash:
+      hosts:
+        logstash-1:
+
+    kibana:
+      hosts:
+        kibana-1:
+
+    filebeat:
+      hosts:
+        filebeat-1:

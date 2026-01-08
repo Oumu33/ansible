@@ -1,0 +1,61 @@
+---
+# Filebeat 配置文件
+
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+{% for path in filebeat_input_paths %}
+    - {{ path }}
+{% endfor %}
+  fields:
+    env: production
+    service: {{ inventory_hostname }}
+  fields_under_root: true
+
+# Filebeat 模块配置
+filebeat.config.modules:
+  path: {{ filebeat_config_dir }}/modules.d/*.yml
+  reload.enabled: false
+
+# 处理器配置
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+# 输出到 Logstash
+{% if filebeat_output_type == "logstash" %}
+output.logstash:
+  hosts: {{ filebeat_logstash_hosts | to_json }}
+  loadbalance: true
+  compression_level: 3
+{% endif %}
+
+# 输出到 Elasticsearch (可选)
+{% if filebeat_output_type == "elasticsearch" %}
+output.elasticsearch:
+  hosts: {{ filebeat_elasticsearch_hosts | to_json }}
+  protocol: "http"
+  indices:
+    - index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+  compression_level: 3
+{% endif %}
+
+# Kibana 配置
+setup.kibana:
+  host: "{{ kibana_elasticsearch_hosts.split(',')[0] }}:5601"
+
+# 监控配置
+monitoring.enabled: true
+
+# 日志配置
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: {{ filebeat_log_dir }}
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644

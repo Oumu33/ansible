@@ -1,0 +1,35 @@
+---
+# RabbitMQ 集群全局配置变量
+
+# RabbitMQ 版本
+rabbitmq_version: "3.13"
+
+# Erlang 版本
+erlang_version: "25"
+
+# 集群配置
+rabbitmq_cluster_name: "rabbitmq_cluster"
+rabbitmq_cluster_nodes:
+  - rabbit@rabbitmq-1
+  - rabbit@rabbitmq-2
+  - rabbit@rabbitmq-3
+
+# RabbitMQ 端口
+rabbitmq_port: 5672
+rabbitmq_management_port: 15672
+rabbitmq_epmd_port: 4369
+
+# RabbitMQ 用户
+rabbitmq_admin_user: "admin"
+rabbitmq_admin_password: "admin123"
+
+# Keepalived 配置
+keepalived_vip: 172.22.0.100
+keepalived_vrid: 51
+keepalived_auth_pass: "1234"
+keepalived_check_interval: 2
+keepalived_check_timeout: 5
+
+# HAProxy 配置
+haproxy_port: 5673
+haproxy_stats_port: 8404

@@ -1,0 +1,13 @@
+---
+# Elasticsearch handlers
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart elasticsearch
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+  become: true

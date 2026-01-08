@@ -1,0 +1,13 @@
+---
+# Kibana handlers
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+
+- name: restart kibana
+  ansible.builtin.systemd:
+    name: kibana
+    state: restarted
+  become: true

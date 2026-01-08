@@ -1,0 +1,12 @@
+---
+# 部署完整的 ELK 集群
+- name: 部署 ELK 集群
+  hosts: elk
+  gather_facts: true
+  become: true
+
+  roles:
+    - { role: elasticsearch, when: inventory_hostname in groups.elasticsearch }
+    - { role: logstash, when: inventory_hostname in groups.logstash }
+    - { role: kibana, when: inventory_hostname in groups.kibana }
+    - { role: filebeat, when: inventory_hostname in groups.filebeat }

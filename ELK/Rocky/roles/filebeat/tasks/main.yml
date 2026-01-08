@@ -1,0 +1,122 @@
+---
+# Filebeat 部署任务
+
+- name: 创建 Filebeat 用户
+  ansible.builtin.user:
+    name: "{{ filebeat_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ filebeat_home }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ filebeat_user }}"
+    group: "{{ filebeat_user }}"
+    mode: '0755'
+  loop:
+    - "{{ filebeat_home }}"
+    - "{{ filebeat_config_dir }}"
+    - "{{ filebeat_data_dir }}"
+    - "{{ filebeat_log_dir }}"
+  become: true
+
+- name: 从控制节点复制 Filebeat
+  ansible.builtin.copy:
+    src: /opt/ansible/downloads/filebeat-{{ filebeat_version }}-linux-x86_64.tar.gz
+    dest: /tmp/filebeat.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 Filebeat
+  ansible.builtin.unarchive:
+    src: /tmp/filebeat.tar.gz
+    dest: "{{ filebeat_home }}"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ filebeat_user }}"
+    group: "{{ filebeat_user }}"
+  become: true
+
+- name: 生成 Filebeat 配置文件
+  ansible.builtin.template:
+    src: filebeat.yml.j2
+    dest: "{{ filebeat_config_dir }}/filebeat.yml"
+    owner: "{{ filebeat_user }}"
+    group: "{{ filebeat_user }}"
+    mode: '0644'
+  become: true
+  notify: restart filebeat
+
+- name: 创建测试日志目录
+  ansible.builtin.file:
+    path: /var/log/test
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: 创建测试日志文件
+  ansible.builtin.copy:
+    dest: /var/log/test/application.log
+    content: |
+      Test log message from Filebeat on {{ inventory_hostname }}
+      Timestamp: {{ ansible_date_time.iso8601 }}
+    mode: '0644'
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/filebeat.service
+    content: |
+      [Unit]
+      Description=Filebeat sends log files to Logstash or directly to Elasticsearch.
+      Documentation=https://www.elastic.co/beats/filebeat
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      User={{ filebeat_user }}
+      Group={{ filebeat_user }}
+      WorkingDirectory={{ filebeat_home }}
+      ExecStart={{ filebeat_home }}/filebeat -c {{ filebeat_config_dir }}/filebeat.yml -path.home {{ filebeat_home }} -path.config {{ filebeat_config_dir }} -path.data {{ filebeat_data_dir }} -path.logs {{ filebeat_log_dir }}
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 Filebeat 服务
+  ansible.builtin.systemd:
+    name: filebeat
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+  ignore_errors: true
+
+- name: 启动 Filebeat（后台模式）
+  ansible.builtin.shell: |
+    nohup {{ filebeat_home }}/filebeat \
+      -c {{ filebeat_config_dir }}/filebeat.yml \
+      > /var/log/filebeat/filebeat.log 2>&1 &
+    echo $! > /var/run/filebeat.pid
+  become: true
+  become_user: "{{ filebeat_user }}"
+  ignore_errors: true
+  when: service_state == "started"
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/filebeat.tar.gz
+    state: absent
+  become: true

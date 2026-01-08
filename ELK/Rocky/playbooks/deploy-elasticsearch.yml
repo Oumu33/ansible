@@ -1,0 +1,9 @@
+---
+# 部署 Elasticsearch 集群
+- name: 部署 Elasticsearch
+  hosts: elasticsearch
+  gather_facts: true
+  become: true
+
+  roles:
+    - elasticsearch

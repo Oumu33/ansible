@@ -1,0 +1,93 @@
+version: '3.8'
+
+# Docker 测试环境 - 模拟 ELK 集群主机
+# 使用 Rocky Linux 9 最小镜像作为测试主机
+
+services:
+  # Elasticsearch 节点 1
+  elasticsearch-1:
+    image: rockylinux-ansible-test:9
+    container_name: elasticsearch-1
+    hostname: elasticsearch-1
+    privileged: true
+    networks:
+      elk-net:
+        ipv4_address: 172.21.0.10
+    command: tail -f /dev/null
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+  # Elasticsearch 节点 2
+  elasticsearch-2:
+    image: rockylinux-ansible-test:9
+    container_name: elasticsearch-2
+    hostname: elasticsearch-2
+    privileged: true
+    networks:
+      elk-net:
+        ipv4_address: 172.21.0.11
+    command: tail -f /dev/null
+    ports:
+      - "9201:9200"
+      - "9301:9300"
+
+  # Elasticsearch 节点 3
+  elasticsearch-3:
+    image: rockylinux-ansible-test:9
+    container_name: elasticsearch-3
+    hostname: elasticsearch-3
+    privileged: true
+    networks:
+      elk-net:
+        ipv4_address: 172.21.0.12
+    command: tail -f /dev/null
+    ports:
+      - "9202:9200"
+      - "9302:9300"
+
+  # Logstash 节点
+  logstash-1:
+    image: rockylinux-ansible-test:9
+    container_name: logstash-1
+    hostname: logstash-1
+    privileged: true
+    networks:
+      elk-net:
+        ipv4_address: 172.21.0.13
+    command: tail -f /dev/null
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+
+  # Kibana 节点
+  kibana-1:
+    image: rockylinux-ansible-test:9
+    container_name: kibana-1
+    hostname: kibana-1
+    privileged: true
+    networks:
+      elk-net:
+        ipv4_address: 172.21.0.14
+    command: tail -f /dev/null
+    ports:
+      - "5601:5601"
+
+  # Filebeat 节点
+  filebeat-1:
+    image: rockylinux-ansible-test:9
+    container_name: filebeat-1
+    hostname: filebeat-1
+    privileged: true
+    networks:
+      elk-net:
+        ipv4_address: 172.21.0.15
+    command: tail -f /dev/null
+
+networks:
+  elk-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
