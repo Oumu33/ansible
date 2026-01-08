@@ -47,7 +47,19 @@
       dataDir={{ zookeeper_data_dir }}
       clientPort={{ zookeeper_port }}
       maxClientCnxns=60
+      server.1=172.128.0.10:2888:3888
+      server.2=172.128.0.11:2888:3888
+      server.3=172.128.0.12:2888:3888
       admin.enableServer=false
+    owner: "{{ zookeeper_user }}"
+    group: "{{ zookeeper_user }}"
+    mode: '0644'
+  become: true
+
+- name: 创建 myid 文件
+  ansible.builtin.copy:
+    dest: "{{ zookeeper_data_dir }}/myid"
+    content: "{{ groups['zookeeper'].index(inventory_hostname) + 1 }}"
     owner: "{{ zookeeper_user }}"
     group: "{{ zookeeper_user }}"
     mode: '0644'

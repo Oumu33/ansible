@@ -45,7 +45,7 @@
       listeners=PLAINTEXT://{{ ansible_host }}:{{ kafka_port }}
       advertised.listeners=PLAINTEXT://{{ ansible_host }}:{{ kafka_port }}
       log.dirs={{ kafka_data_dir }}
-      zookeeper.connect=172.128.0.10:2181
+      zookeeper.connect=172.128.0.10:2181,172.128.0.11:2181,172.128.0.12:2181
       num.network.threads=3
       num.io.threads=8
       socket.send.buffer.bytes=102400
