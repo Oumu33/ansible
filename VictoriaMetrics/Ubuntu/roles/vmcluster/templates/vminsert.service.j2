@@ -1,0 +1,28 @@
+[Unit]
+Description=VictoriaMetrics Insert - Ingestion Node
+Documentation=https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ vm_user }}
+Group={{ vm_group }}
+WorkingDirectory={{ vm_data_dir }}
+ExecStart={{ vm_install_dir }}/vminsert-prod \
+  -storageNode={{ vminsert_storage_nodes }} \
+  -httpListenAddr={{ vminsert_listen_addr }} \
+  -maxConcurrentInserts={{ vminsert_max_concurrent_inserts }} \
+  -maxInsertRequestSize={{ vminsert_max_insert_request_size }} \
+  -loggerLevel={{ vm_log_level }} \
+  -loggerStdout \
+  -memory.allowedPercent={{ vminsert_memory_allowed_percent | default(60) }}
+
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+LimitNPROC=32768
+MemoryLimit={{ vm_memory_limit }}M
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,50 @@
+---
+# ELK 集群测试主机清单（Docker 容器 - 使用 Docker 连接）
+# 用于在 Docker 容器中测试 Ansible 部署
+
+all:
+  children:
+    elk:
+      hosts:
+        elasticsearch-1:
+          ansible_host: elasticsearch-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        elasticsearch-2:
+          ansible_host: elasticsearch-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        elasticsearch-3:
+          ansible_host: elasticsearch-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        logstash-1:
+          ansible_host: logstash-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        kibana-1:
+          ansible_host: kibana-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        filebeat-1:
+          ansible_host: filebeat-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+
+    elasticsearch:
+      hosts:
+        elasticsearch-1:
+        elasticsearch-2:
+        elasticsearch-3:
+
+    logstash:
+      hosts:
+        logstash-1:
+
+    kibana:
+      hosts:
+        kibana-1:
+
+    filebeat:
+      hosts:
+        filebeat-1:

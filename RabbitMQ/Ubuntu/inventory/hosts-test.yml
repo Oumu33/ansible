@@ -1,0 +1,46 @@
+---
+# RabbitMQ 集群 + HA + Keepalived 测试主机清单
+
+all:
+  children:
+    rabbitmq:
+      hosts:
+        rabbitmq-1:
+          ansible_host: 172.22.0.10
+          ansible_user: root
+          rabbitmq_node_type: master
+          rabbitmq_nodename: rabbit@rabbitmq-1
+        rabbitmq-2:
+          ansible_host: 172.22.0.11
+          ansible_user: root
+          rabbitmq_node_type: slave
+          rabbitmq_nodename: rabbit@rabbitmq-2
+        rabbitmq-3:
+          ansible_host: 172.22.0.12
+          ansible_user: root
+          rabbitmq_node_type: slave
+          rabbitmq_nodename: rabbit@rabbitmq-3
+
+    keepalived:
+      hosts:
+        keepalived-1:
+          ansible_host: 172.22.0.20
+          ansible_user: root
+          keepalived_state: MASTER
+          keepalived_priority: 100
+          keepalived_vip: 172.22.0.100
+        keepalived-2:
+          ansible_host: 172.22.0.21
+          ansible_user: root
+          keepalived_state: BACKUP
+          keepalived_priority: 90
+          keepalived_vip: 172.22.0.100
+
+    haproxy:
+      hosts:
+        keepalived-1:
+          ansible_host: 172.22.0.20
+          ansible_user: root
+        keepalived-2:
+          ansible_host: 172.22.0.21
+          ansible_user: root

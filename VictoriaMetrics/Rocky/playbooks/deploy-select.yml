@@ -1,0 +1,11 @@
+---
+# VictoriaMetrics 查询节点部署 Playbook
+# 仅部署 vmselect 查询节点
+
+- name: 部署 VictoriaMetrics 查询节点
+  hosts: vmselect
+  gather_facts: true
+  become: true
+
+  roles:
+    - vmcluster

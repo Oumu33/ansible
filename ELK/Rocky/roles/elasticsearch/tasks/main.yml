@@ -1,0 +1,123 @@
+---
+# Elasticsearch 部署任务
+
+# Elasticsearch 9.x 已内置 Java 运行时，无需单独安装
+# - name: 安装 Java
+#   ansible.builtin.dnf:
+#     name: java-{{ java_version }}-openjdk-headless
+#     state: present
+#     update_cache: yes
+#   become: true
+
+- name: 创建 Elasticsearch 用户
+  ansible.builtin.user:
+    name: "{{ elasticsearch_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ elasticsearch_home }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ elasticsearch_user }}"
+    group: "{{ elasticsearch_user }}"
+    mode: '0755'
+  loop:
+    - "{{ elasticsearch_home }}"
+    - "{{ elasticsearch_config_dir }}"
+    - "{{ elasticsearch_log_dir }}"
+    - "{{ elasticsearch_data_dir }}"
+  become: true
+
+- name: 从控制节点复制 Elasticsearch
+  ansible.builtin.copy:
+    src: /opt/ansible/downloads/elasticsearch-{{ elasticsearch_version }}-linux-x86_64.tar.gz
+    dest: /tmp/elasticsearch.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 Elasticsearch
+  ansible.builtin.unarchive:
+    src: /tmp/elasticsearch.tar.gz
+    dest: "{{ elasticsearch_home }}"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ elasticsearch_user }}"
+    group: "{{ elasticsearch_user }}"
+  become: true
+
+- name: 生成 Elasticsearch 配置文件
+  ansible.builtin.template:
+    src: elasticsearch.yml.j2
+    dest: "{{ elasticsearch_home }}/config/elasticsearch.yml"
+    owner: "{{ elasticsearch_user }}"
+    group: "{{ elasticsearch_user }}"
+    mode: '0644'
+  become: true
+  notify: restart elasticsearch
+
+- name: 配置 JVM 内存
+  ansible.builtin.copy:
+    dest: "{{ elasticsearch_home }}/config/jvm.options.d/heap.options"
+    content: |
+      -Xms{{ elasticsearch_heap_size }}
+      -Xmx{{ elasticsearch_heap_size }}
+    owner: "{{ elasticsearch_user }}"
+    group: "{{ elasticsearch_user }}"
+    mode: '0644'
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/elasticsearch.service
+    content: |
+      [Unit]
+      Description=Elasticsearch
+      Documentation=https://www.elastic.co
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      User={{ elasticsearch_user }}
+      Group={{ elasticsearch_user }}
+      WorkingDirectory={{ elasticsearch_home }}
+      ExecStart={{ elasticsearch_home }}/bin/elasticsearch
+      StandardOutput=journal
+      StandardError=journal
+      LimitMEMLOCK=infinity
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 Elasticsearch 服务
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+  ignore_errors: true
+
+- name: 启动 Elasticsearch（后台模式）
+  ansible.builtin.shell: |
+    cd {{ elasticsearch_home }}
+    nohup ./bin/elasticsearch \
+      > {{ elasticsearch_log_dir }}/elasticsearch.log 2>&1 &
+    echo $! > /var/run/elasticsearch.pid
+  become_user: "{{ elasticsearch_user }}"
+  ignore_errors: true
+  when: service_state == "started"
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/elasticsearch.tar.gz
+    state: absent
+  become: true

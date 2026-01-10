@@ -1,0 +1,124 @@
+---
+# RabbitMQ 部署任务
+
+- name: 更新 apt 缓存
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: 安装依赖包
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg
+      - apt-transport-https
+      - erlang
+      - socat
+      - logrotate
+    state: present
+
+- name: 添加 RabbitMQ GPG 密钥
+  ansible.builtin.apt_key:
+    url: https://packagecloud.io/rabbitmq/rabbitmq-server/gpgkey
+    state: present
+
+- name: 添加 RabbitMQ 仓库
+  ansible.builtin.apt_repository:
+    repo: "deb https://packagecloud.io/rabbitmq/rabbitmq-server/ubuntu/ {{ ansible_distribution_release }} main"
+    state: present
+    filename: rabbitmq
+
+- name: 安装 RabbitMQ
+  ansible.builtin.apt:
+    name:
+      - rabbitmq-server
+    state: present
+    update_cache: yes
+
+- name: 启用 RabbitMQ 管理插件
+  ansible.builtin.command: rabbitmq-plugins enable rabbitmq_management
+  changed_when: false
+
+- name: 创建 RabbitMQ 配置文件
+  ansible.builtin.template:
+    src: rabbitmq.conf.j2
+    dest: /etc/rabbitmq/rabbitmq.conf
+    owner: rabbitmq
+    group: rabbitmq
+    mode: '0644'
+  notify: restart rabbitmq
+
+- name: 确保 Erlang Cookie 一致性
+  ansible.builtin.copy:
+    content: "{{ rabbitmq_erlang_cookie }}"
+    dest: /var/lib/rabbitmq/.erlang.cookie
+    owner: rabbitmq
+    group: rabbitmq
+    mode: '0400'
+    force: yes
+  notify: restart rabbitmq
+
+- name: 启动 RabbitMQ 服务
+  ansible.builtin.systemd:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: 等待 RabbitMQ 启动
+  ansible.builtin.wait_for:
+    port: 5672
+    delay: 5
+    timeout: 60
+
+- name: 添加管理员用户
+  ansible.builtin.command: rabbitmqctl add_user {{ rabbitmq_admin_user }} {{ rabbitmq_admin_password }}
+  ignore_errors: yes
+  changed_when: false
+
+- name: 设置管理员权限
+  ansible.builtin.command: rabbitmqctl set_user_tags {{ rabbitmq_admin_user }} administrator
+  ignore_errors: yes
+  changed_when: false
+
+- name: 创建集群（仅 master 节点）
+  ansible.builtin.command: rabbitmqctl stop_app
+  when: rabbitmq_node_type == 'master'
+  ignore_errors: yes
+  changed_when: false
+
+- name: 重置节点（仅 master 节点）
+  ansible.builtin.command: rabbitmqctl reset
+  when: rabbitmq_node_type == 'master'
+  ignore_errors: yes
+  changed_when: false
+
+- name: 启动节点（仅 master 节点）
+  ansible.builtin.command: rabbitmqctl start_app
+  when: rabbitmq_node_type == 'master'
+  ignore_errors: yes
+  changed_when: false
+
+- name: 加入集群（仅 slave 节点）
+  ansible.builtin.command: rabbitmqctl stop_app
+  when: rabbitmq_node_type == 'slave'
+  ignore_errors: yes
+  changed_when: false
+
+- name: 重置节点（仅 slave 节点）
+  ansible.builtin.command: rabbitmqctl reset
+  when: rabbitmq_node_type == 'slave'
+  ignore_errors: yes
+  changed_when: false
+
+- name: 加入集群（仅 slave 节点）
+  ansible.builtin.command: rabbitmqctl join_cluster {{ rabbitmq_cluster_nodes[0] }}
+  when: rabbitmq_node_type == 'slave'
+  ignore_errors: yes
+  changed_when: false
+
+- name: 启动节点（仅 slave 节点）
+  ansible.builtin.command: rabbitmqctl start_app
+  when: rabbitmq_node_type == 'slave'
+  ignore_errors: yes
+  changed_when: false
