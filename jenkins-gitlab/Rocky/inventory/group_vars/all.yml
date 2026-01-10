@@ -1,0 +1,69 @@
+---
+# Jenkins + GitLab 全局变量
+
+# 版本
+jenkins_version: "2.452.3"
+gitlab_version: "17.1.0"
+gitlab_runner_version: "17.1.0"
+redis_version: "7.2"
+postgresql_version: "16"
+
+# 安装目录
+jenkins_install_dir: "/opt/jenkins"
+jenkins_home_dir: "/var/lib/jenkins"
+jenkins_log_dir: "/var/log/jenkins"
+
+gitlab_install_dir: "/opt/gitlab"
+gitlab_data_dir: "/var/opt/gitlab"
+gitlab_config_dir: "/etc/gitlab"
+gitlab_log_dir: "/var/log/gitlab"
+gitlab_runner_config_dir: "/etc/gitlab-runner"
+
+# 系统用户
+jenkins_user: "jenkins"
+jenkins_group: "jenkins"
+gitlab_user: "git"
+gitlab_group: "git"
+gitlab_runner_user: "gitlab-runner"
+
+# Jenkins 配置
+jenkins_port: 8080
+jenkins_admin_user: "admin"
+jenkins_admin_password: "admin"
+jenkins_jvm_opts: "-Xmx2g -Xms2g"
+
+# GitLab 配置
+gitlab_port: 80
+gitlab_https_port: 443
+gitlab_ssh_port: 2222
+gitlab_hostname: "gitlab.example.com"
+gitlab_root_user: "root"
+gitlab_root_password: "Gitlab12345"
+gitlab_root_email: "root@gitlab.example.com"
+
+# GitLab Runner 配置
+gitlab_runner_concurrent: 4
+gitlab_runner_limit: 4
+gitlab_runner_executor: "docker"
+gitlab_runner_docker_image: "docker:latest"
+gitlab_runner_docker_privileged: true
+
+# Redis 配置
+redis_port: 6379
+redis_password: "redis_password"
+redis_maxmemory: "2gb"
+redis_maxmemory_policy: "allkeys-lru"
+
+# PostgreSQL 配置
+postgresql_port: 5432
+postgresql_db_name: "gitlabhq_production"
+postgresql_user: "gitlab"
+postgresql_password: "gitlab_password"
+postgresql_max_connections: 200
+
+# 下载超时 (秒)
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

@@ -1,9 +1,0 @@
----
-# RabbitMQ 集群部署 Playbook
-
-- name: 部署 RabbitMQ 集群
-  hosts: rabbitmq
-  gather_facts: true
-  become: true
-  roles:
-    - ../../roles/rabbitmq

@@ -1,0 +1,61 @@
+---
+- name: 在 Rocky Linux 容器中部署 Jenkins
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  vars:
+    jenkins_container: jenkins-server
+    jenkins_war_path: /opt/ansible/downloads/jenkins-2.452.1.war
+    jenkins_install_dir: /opt/jenkins
+    jenkins_home: /var/lib/jenkins
+    jenkins_port: 9090
+    
+  tasks:
+    - name: 检查 Jenkins WAR 包是否存在
+      ansible.builtin.stat:
+        path: "{{ jenkins_war_path }}"
+      register: jenkins_war
+      
+    - name: 复制 Jenkins WAR 包到容器
+      ansible.builtin.command: docker cp {{ jenkins_war_path }} {{ jenkins_container }}:/tmp/jenkins.war
+      when: jenkins_war.stat.exists
+      
+    - name: 在容器中创建 Jenkins 用户和目录
+      ansible.builtin.command: docker exec {{ jenkins_container }} bash -c "mkdir -p {{ jenkins_home }} {{ jenkins_install_dir }} && useradd -r -s /bin/bash -d {{ jenkins_home }} jenkins 2>/dev/null || true && chown -R jenkins:jenkins {{ jenkins_home }} {{ jenkins_install_dir }}"
+      
+    - name: 移动 Jenkins WAR 包到安装目录
+      ansible.builtin.command: docker exec {{ jenkins_container }} bash -c "mv /tmp/jenkins.war {{ jenkins_install_dir }}/jenkins.war && chown jenkins:jenkins {{ jenkins_install_dir }}/jenkins.war"
+      
+    - name: 创建 Jenkins 启动脚本
+      ansible.builtin.copy:
+        content: |
+          #!/bin/bash
+          export JENKINS_HOME={{ jenkins_home }}
+          export JAVA_OPTS='-Xmx1024m -Djava.awt.headless=true'
+          cd {{ jenkins_install_dir }}
+          java $JAVA_OPTS -jar jenkins.war --httpPort={{ jenkins_port }}
+        dest: /tmp/jenkins.sh
+        mode: '0755'
+        
+    - name: 复制启动脚本到容器
+      ansible.builtin.command: docker cp /tmp/jenkins.sh {{ jenkins_container }}:{{ jenkins_install_dir }}/jenkins.sh
+      
+    - name: 设置脚本权限
+      ansible.builtin.command: docker exec {{ jenkins_container }} bash -c "chown jenkins:jenkins {{ jenkins_install_dir }}/jenkins.sh && chmod +x {{ jenkins_install_dir }}/jenkins.sh"
+      
+    - name: 启动 Jenkins
+      ansible.builtin.command: docker exec {{ jenkins_container }} bash -c "su - jenkins -c '{{ jenkins_install_dir }}/jenkins.sh' > /tmp/jenkins.log 2>&1 &"
+      
+    - name: 等待 Jenkins 启动
+      ansible.builtin.wait_for:
+        timeout: 60
+        delay: 5
+        
+    - name: 查看 Jenkins 日志
+      ansible.builtin.command: docker exec {{ jenkins_container }} bash -c "tail -30 /tmp/jenkins.log"
+      register: jenkins_log
+      
+    - name: 显示 Jenkins 日志
+      ansible.builtin.debug:
+        msg: "{{ jenkins_log.stdout_lines }}"

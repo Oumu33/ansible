@@ -1,0 +1,37 @@
+---
+# SonarQube 全局变量
+
+# 版本
+sonarqube_version: "10.6.0.92116"
+postgresql_version: "16"
+
+# 安装目录
+sonarqube_install_dir: "/opt/sonarqube"
+sonarqube_data_dir: "/var/lib/sonarqube"
+sonarqube_log_dir: "/var/log/sonarqube"
+sonarqube_temp_dir: "/tmp/sonarqube"
+
+# 系统用户
+sonarqube_user: "sonarqube"
+sonarqube_group: "sonarqube"
+
+# SonarQube 配置
+sonarqube_port: 9000
+sonarqube_context_path: "/"
+sonarqube_web_host: "0.0.0.0"
+sonarqube_web_jvm_opts: "-Xmx2g -Xms2g"
+sonarqube_ce_jvm_opts: "-Xmx2g -Xms2g"
+sonarqube_search_jvm_opts: "-Xmx1g -Xms1g"
+
+# PostgreSQL 配置
+postgresql_port: 5432
+postgresql_db_name: "sonarqube"
+postgresql_user: "sonarqube"
+postgresql_password: "sonarqube_password"
+
+# 下载超时 (秒)
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

@@ -1,4 +1,0 @@
----
-vmauth_binary_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ victoriametrics_version }}/vmauth-{{ victoriametrics_version }}-linux-amd64.tar.gz"
-vmauth_config_path: "{{ vm_config_dir }}/vmauth/config.yml"
-vmauth_log_path: "{{ vm_log_dir }}/vmauth"

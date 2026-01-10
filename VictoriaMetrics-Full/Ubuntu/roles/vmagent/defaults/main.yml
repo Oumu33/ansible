@@ -1,8 +1,0 @@
----
-vmagent_binary_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ victoriametrics_version }}/vmagent-{{ victoriametrics_version }}-linux-amd64.tar.gz"
-vmagent_config_path: "{{ vm_config_dir }}/vmagent/config.yml"
-vmagent_log_path: "{{ vm_log_dir }}/vmagent"
-vmagent_scrape_configs:
-  - job_name: 'node'
-    static_configs:
-      - targets: ['localhost:9100']

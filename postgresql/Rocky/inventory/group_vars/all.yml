@@ -1,0 +1,43 @@
+---
+# PostgreSQL 单机版全局变量
+
+# 版本
+postgresql_version: "16"
+
+# 安装目录
+postgresql_install_dir: "/opt/postgresql"
+postgresql_data_dir: "/var/lib/postgresql/data"
+postgresql_config_dir: "/etc/postgresql"
+postgresql_log_dir: "/var/log/postgresql"
+
+# 系统用户
+postgresql_user: "postgres"
+postgresql_group: "postgres"
+
+# PostgreSQL 配置
+postgresql_port: 5432
+postgresql_listen_addresses: "0.0.0.0"
+postgresql_max_connections: 100
+postgresql_shared_buffers: "256MB"
+postgresql_effective_cache_size: "1GB"
+postgresql_maintenance_work_mem: "64MB"
+postgresql_checkpoint_completion_target: 0.9
+postgresql_wal_buffers: "16MB"
+postgresql_default_statistics_target: 100
+postgresql_random_page_cost: 1.1
+postgresql_effective_io_concurrency: 200
+postgresql_work_mem: "2621kB"
+postgresql_min_wal_size: "1GB"
+postgresql_max_wal_size: "4GB"
+
+# 数据库配置
+postgresql_db_name: "postgres"
+postgresql_user: "postgres"
+postgresql_password: "postgres_password"
+
+# 下载超时 (秒)
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

@@ -1,0 +1,63 @@
+---
+- name: 在 Rocky Linux 容器中部署 GitLab
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  vars:
+    gitlab_container: gitlab-server
+    gitlab_external_url: "http://gitlab.example.com"
+    gitlab_data_dir: "/var/opt/gitlab"
+    gitlab_config_dir: "/etc/gitlab"
+    
+  tasks:
+    - name: 检查容器是否运行
+      ansible.builtin.command: docker ps --filter "name={{ gitlab_container }}" --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: container_status
+      changed_when: false
+      
+    - name: 显示容器状态
+      ansible.builtin.debug:
+        msg: "GitLab 容器: {{ container_status.stdout }}"
+        
+    - name: 安装 GitLab 依赖
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "dnf install -y curl policycoreutils-python-utils openssh-server postfix wget vim 2>&1 | tail -5"
+      async: 600
+      poll: 10
+      
+    - name: 启动 postfix
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "systemctl start postfix && systemctl enable postfix"
+      
+    - name: 下载 GitLab 安装脚本
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | bash"
+      async: 300
+      poll: 10
+      
+    - name: 安装 GitLab CE
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "dnf install -y gitlab-ce 2>&1 | tail -10"
+      async: 600
+      poll: 10
+      
+    - name: 配置 GitLab 外部 URL
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "sed -i 's|^external_url.*|external_url \"{{ gitlab_external_url }}\"|' /etc/gitlab/gitlab.rb"
+      
+    - name: 配置 GitLab SSH 端口
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "sed -i 's|^# gitlab_rails.*gitlab_shell_ssh_port.*|gitlab_rails[\"gitlab_shell_ssh_port\"] = 2222|' /etc/gitlab/gitlab.rb"
+      
+    - name: 重新配置 GitLab
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "gitlab-ctl reconfigure"
+      async: 600
+      poll: 10
+      
+    - name: 等待 GitLab 启动
+      ansible.builtin.wait_for:
+        timeout: 120
+        delay: 10
+        
+    - name: 检查 GitLab 状态
+      ansible.builtin.command: docker exec {{ gitlab_container }} bash -c "gitlab-ctl status"
+      register: gitlab_status
+      
+    - name: 显示 GitLab 状态
+      ansible.builtin.debug:
+        msg: "{{ gitlab_status.stdout_lines }}"

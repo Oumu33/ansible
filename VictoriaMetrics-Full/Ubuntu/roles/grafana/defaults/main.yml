@@ -1,6 +1,0 @@
----
-grafana_binary_url: "https://dl.grafana.com/oss/release/grafana-{{ grafana_version }}.linux-amd64.tar.gz"
-grafana_config_path: "{{ vm_config_dir }}/grafana"
-grafana_data_path: "{{ vm_data_dir }}/grafana"
-grafana_log_path: "{{ vm_log_dir }}/grafana"
-grafana_plugins_dir: "/var/lib/grafana/plugins"

@@ -1,9 +1,0 @@
----
-# 部署 Logstash
-- name: 部署 Logstash
-  hosts: logstash
-  gather_facts: true
-  become: true
-
-  roles:
-    - logstash

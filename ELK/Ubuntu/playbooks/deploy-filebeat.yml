@@ -1,9 +1,0 @@
----
-# 部署 Filebeat 日志采集器
-- name: 部署 Filebeat
-  hosts: filebeat
-  gather_facts: true
-  become: true
-
-  roles:
-    - filebeat

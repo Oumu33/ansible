@@ -1,0 +1,6 @@
+FROM rockylinux-ansible-test:9
+
+# 安装 Java 17
+RUN dnf install -y java-17-openjdk-headless && dnf clean all
+
+CMD ["/start.sh"]
