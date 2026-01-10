@@ -1,0 +1,78 @@
+version: '3.8'
+services:
+  postgresql-1:
+    image: rockylinux-java:17
+    container_name: postgresql-1
+    hostname: postgresql-1
+    privileged: true
+    networks:
+      jenkins-gitlab-net:
+        ipv4_address: 172.22.0.95
+    ports:
+      - "5432:5432"
+  redis-1:
+    image: rockylinux-java:17
+    container_name: redis-1
+    hostname: redis-1
+    privileged: true
+    networks:
+      jenkins-gitlab-net:
+        ipv4_address: 172.22.0.94
+    ports:
+      - "6379:6379"
+  jenkins-1:
+    image: rockylinux-java:17
+    container_name: jenkins-1
+    hostname: jenkins-1
+    privileged: true
+    networks:
+      jenkins-gitlab-net:
+        ipv4_address: 172.22.0.90
+    ports:
+      - "8080:8080"
+  gitlab-1:
+    image: rockylinux-java:17
+    container_name: gitlab-1
+    hostname: gitlab-1
+    privileged: true
+    networks:
+      jenkins-gitlab-net:
+        ipv4_address: 172.22.0.91
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2222:2222"
+    depends_on:
+      - postgresql-1
+      - redis-1
+  gitlab-runner-1:
+    image: rockylinux-java:17
+    container_name: gitlab-runner-1
+    hostname: gitlab-runner-1
+    privileged: true
+    networks:
+      jenkins-gitlab-net:
+        ipv4_address: 172.22.0.92
+    ports:
+      - "8092:8092"
+    depends_on:
+      - gitlab-1
+  gitlab-runner-2:
+    image: rockylinux-java:17
+    container_name: gitlab-runner-2
+    hostname: gitlab-runner-2
+    privileged: true
+    networks:
+      jenkins-gitlab-net:
+        ipv4_address: 172.22.0.93
+    ports:
+      - "8093:8093"
+    depends_on:
+      - gitlab-1
+networks:
+  jenkins-gitlab-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+          gateway: 172.22.0.1
