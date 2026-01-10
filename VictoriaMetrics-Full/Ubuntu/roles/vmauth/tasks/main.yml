@@ -1,0 +1,109 @@
+---
+- name: 创建 victoriametrics 用户
+  ansible.builtin.user:
+    name: "{{ vm_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ vm_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建安装目录
+  ansible.builtin.file:
+    path: "{{ vm_install_dir }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  loop:
+    - "{{ vmauth_config_path | dirname }}"
+    - "{{ vmauth_log_path }}"
+  become: true
+
+- name: 从控制节点复制 vmauth
+  ansible.builtin.copy:
+    src: /tmp/victoria-metrics-linux-amd64-{{ victoriametrics_version }}-cluster.tar.gz
+    dest: /tmp/vmauth.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 vmauth
+  ansible.builtin.unarchive:
+    src: /tmp/vmauth.tar.gz
+    dest: "{{ vm_install_dir }}"
+    remote_src: true
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+  become: true
+
+- name: 生成 vmauth 配置文件
+  ansible.builtin.copy:
+    dest: "{{ vmauth_config_path }}"
+    content: |
+      users:
+        - username: "admin"
+          password: "admin"
+          url_prefix: "http://127.0.0.1:8480"
+          url_map:
+            - src_paths:
+                - "/.*"
+              dst_paths:
+                - "/$1"
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmauth
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vmauth.service
+    content: |
+      [Unit]
+      Description=VictoriaMetrics Auth
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ vm_user }}
+      Group={{ vm_user }}
+      WorkingDirectory={{ vm_install_dir }}
+      ExecStart={{ vm_install_dir }}/vmauth-prod \
+        -httpListenAddr=:{{ vmauth_port }} \
+        -auth.config={{ vmauth_config_path }} \
+        -loggerOutput=stdout \
+        -loggerFormat=json
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 vmauth 服务
+  ansible.builtin.systemd:
+    name: vmauth
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/vmauth.tar.gz
+    state: absent
+  become: true

@@ -1,0 +1,90 @@
+---
+- name: 创建 victoriametrics 用户
+  ansible.builtin.user:
+    name: "{{ vm_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ vm_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建安装目录
+  ansible.builtin.file:
+    path: "{{ vm_install_dir }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0755'
+  loop:
+    - "{{ vmselect_data_path }}"
+    - "{{ vmselect_log_path }}"
+  become: true
+
+- name: 从控制节点复制 vmselect
+  ansible.builtin.copy:
+    src: /tmp/victoria-metrics-linux-amd64-{{ victoriametrics_version }}-cluster.tar.gz
+    dest: /tmp/vmselect.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 vmselect
+  ansible.builtin.unarchive:
+    src: /tmp/vmselect.tar.gz
+    dest: "{{ vm_install_dir }}"
+    remote_src: true
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vmselect.service
+    content: |
+      [Unit]
+      Description=VictoriaMetrics Select
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ vm_user }}
+      Group={{ vm_user }}
+      WorkingDirectory={{ vm_install_dir }}
+      ExecStart={{ vm_install_dir }}/vmselect-prod \
+        -httpListenAddr=:{{ vmselect_port }} \
+        -storageNode={{ vmselect_storage_nodes | join(',') }} \
+        -loggerOutput=stdout \
+        -loggerFormat=json
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 vmselect 服务
+  ansible.builtin.systemd:
+    name: vmselect
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/vmselect.tar.gz
+    state: absent
+  become: true

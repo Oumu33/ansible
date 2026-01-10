@@ -1,0 +1,28 @@
+[Unit]
+Description=VictoriaMetrics Storage
+Documentation=https://docs.victoriametrics.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ vmstorage_user }}
+Group={{ vmstorage_user }}
+WorkingDirectory={{ vmstorage_home }}
+ExecStart={{ vmstorage_home }}/vmstorage-prod \
+  -httpListenAddr=:{{ vmstorage_port }} \
+  -vminsertAddr=:{{ vmstorage_vminsert_port }} \
+  -vmselectAddr=:{{ vmstorage_vmselect_port }} \
+  -storageDataPath={{ vmstorage_data_dir }} \
+  -retentionPeriod={{ vmstorage_retention_period }} \
+  -memory.allowedBytes={{ vmstorage_memory_allowed_bytes }} \
+  -loggerLevel=info \
+  -loggerFormat=json
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

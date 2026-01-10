@@ -1,0 +1,101 @@
+---
+# VictoriaMetrics 监控栈主机清单 (Docker 连接)
+
+all:
+  children:
+    vm:
+      hosts:
+        vmstorage-1:
+          ansible_host: vmstorage-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmstorage-2:
+          ansible_host: vmstorage-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmstorage-3:
+          ansible_host: vmstorage-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vminsert-1:
+          ansible_host: vminsert-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vminsert-2:
+          ansible_host: vminsert-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vminsert-3:
+          ansible_host: vminsert-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmselect-1:
+          ansible_host: vmselect-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmselect-2:
+          ansible_host: vmselect-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmselect-3:
+          ansible_host: vmselect-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmauth-1:
+          ansible_host: vmauth-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmalert-1:
+          ansible_host: vmalert-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        vmagent-1:
+          ansible_host: vmagent-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        alertmanager-1:
+          ansible_host: alertmanager-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        grafana-1:
+          ansible_host: grafana-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+
+    vmstorage:
+      hosts:
+        vmstorage-1:
+        vmstorage-2:
+        vmstorage-3:
+
+    vminsert:
+      hosts:
+        vminsert-1:
+        vminsert-2:
+        vminsert-3:
+
+    vmselect:
+      hosts:
+        vmselect-1:
+        vmselect-2:
+        vmselect-3:
+
+    vmauth:
+      hosts:
+        vmauth-1:
+
+    vmalert:
+      hosts:
+        vmalert-1:
+
+    vmagent:
+      hosts:
+        vmagent-1:
+
+    alertmanager:
+      hosts:
+        alertmanager-1:
+
+    grafana:
+      hosts:
+        grafana-1:

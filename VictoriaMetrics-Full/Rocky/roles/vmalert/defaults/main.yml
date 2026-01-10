@@ -1,0 +1,4 @@
+---
+vmalert_binary_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ victoriametrics_version }}/vmalert-{{ victoriametrics_version }}-linux-amd64.tar.gz"
+vmalert_config_path: "{{ vm_config_dir }}/vmalert/alerts.yml"
+vmalert_log_path: "{{ vm_log_dir }}/vmalert"

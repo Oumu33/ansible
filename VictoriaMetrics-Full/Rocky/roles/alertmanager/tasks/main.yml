@@ -1,0 +1,107 @@
+---
+- name: 创建 alertmanager 用户
+  ansible.builtin.user:
+    name: "alertmanager"
+    system: true
+    shell: /bin/false
+    home: "/usr/local/alertmanager"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "alertmanager"
+    group: "alertmanager"
+    mode: '0755'
+  loop:
+    - "/usr/local/alertmanager"
+    - "{{ alertmanager_data_path }}"
+    - "{{ vm_config_dir }}/alertmanager"
+    - "{{ alertmanager_log_path }}"
+  become: true
+
+- name: 从控制节点复制 alertmanager
+  ansible.builtin.copy:
+    src: /tmp/alertmanager-0.27.0.linux-amd64.tar.gz
+    dest: /tmp/alertmanager.tar.gz
+    mode: '0644'
+  become: true
+
+- name: 解压 alertmanager
+  ansible.builtin.unarchive:
+    src: /tmp/alertmanager.tar.gz
+    dest: "/usr/local/alertmanager"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "alertmanager"
+    group: "alertmanager"
+  become: true
+
+- name: 生成 alertmanager 配置文件
+  ansible.builtin.copy:
+    dest: "{{ alertmanager_config_path }}"
+    content: |
+      global:
+        resolve_timeout: 5m
+
+      route:
+        group_by: ['alertname']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 12h
+        receiver: 'web.hook'
+
+      receivers:
+        - name: 'web.hook'
+          webhook_configs:
+            - url: 'http://127.0.0.1:5001/'
+    owner: "alertmanager"
+    group: "alertmanager"
+    mode: '0644'
+  become: true
+  notify: restart alertmanager
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/alertmanager.service
+    content: |
+      [Unit]
+      Description=Alertmanager
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=alertmanager
+      Group=alertmanager
+      WorkingDirectory=/usr/local/alertmanager
+      ExecStart=/usr/local/alertmanager/alertmanager \
+        --config.file={{ alertmanager_config_path }} \
+        --storage.path={{ alertmanager_data_path }} \
+        --web.listen-address={{ alertmanager_web_listen_address }}
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 alertmanager 服务
+  ansible.builtin.systemd:
+    name: alertmanager
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/alertmanager.tar.gz
+    state: absent
+  become: true

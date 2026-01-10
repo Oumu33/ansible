@@ -1,0 +1,5 @@
+---
+alertmanager_binary_url: "https://github.com/prometheus/alertmanager/releases/download/{{ alertmanager_version }}/alertmanager-{{ alertmanager_version }}.linux-amd64.tar.gz"
+alertmanager_config_path: "{{ vm_config_dir }}/alertmanager/alertmanager.yml"
+alertmanager_data_path: "{{ vm_data_dir }}/alertmanager"
+alertmanager_log_path: "{{ vm_log_dir }}/alertmanager"
