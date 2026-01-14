@@ -1,0 +1,30 @@
+[mysqld]
+port = {{ mysql_port }}
+basedir = {{ mysql_install_dir }}
+datadir = {{ mysql_data_dir }}
+socket = /tmp/mysql.sock
+
+server-id = {{ mysql_server_id }}
+log-bin = mysql-bin
+binlog-format = ROW
+gtid-mode = ON
+enforce-gtid-consistency = ON
+
+# Group Replication 配置
+plugin_load_add = 'group_replication.so'
+group_replication_group_name = "{{ mgr_group_name }}"
+group_replication_start_on_boot = OFF
+group_replication_local_address = "{{ mgr_local_address }}"
+group_replication_group_seeds = "{{ mgr_group_seeds }}"
+group_replication_bootstrap_group = OFF
+group_replication_ssl_mode = DISABLED
+
+relay-log = relay-bin
+relay-log-index = relay-bin.index
+
+[client]
+port = {{ mysql_port }}
+socket = /tmp/mysql.sock
+
+[mysql]
+prompt = "\\u@\\h [\\d]> "

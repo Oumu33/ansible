@@ -1,0 +1,101 @@
+---
+- name: 创建 mysql-router 用户
+  ansible.builtin.user:
+    name: "{{ router_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ router_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ router_user }}"
+    group: "{{ router_user }}"
+    mode: '0755'
+  loop:
+    - "{{ router_install_dir }}"
+    - "{{ router_config_dir }}"
+    - "{{ router_log_dir }}"
+  become: true
+
+- name: 下载 MySQL Router
+  ansible.builtin.get_url:
+    url: "https://dev.mysql.com/get/Downloads/MySQL-Router/{{ router_version }}/mysql-router-{{ router_version }}-linux-glibc2.28-x86_64.tar.xz"
+    dest: "/tmp/router.tar.xz"
+    mode: '0644'
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 解压 MySQL Router
+  ansible.builtin.unarchive:
+    src: /tmp/router.tar.xz
+    dest: "{{ router_install_dir }}"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ router_user }}"
+    group: "{{ router_user }}"
+  become: true
+
+- name: 在 MGR 节点创建 router 用户
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysqlsh --uri root:{{ mysql_root_password }}@172.25.0.10:3306 --sql -e "CREATE USER IF NOT EXISTS 'mysql_router'@'%' IDENTIFIED BY '{{ router_password }}'; GRANT ALL PRIVILEGES ON mysql_innodb_cluster_metadata.* TO 'mysql_router'@'%'; GRANT ALL PRIVILEGES ON *.* TO 'mysql_router'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+  become: true
+  delegate_to: mysql-mgr-1
+  run_once: true
+
+- name: Bootstrap MySQL Router
+  ansible.builtin.shell: |
+    {{ router_install_dir }}/bin/mysqlrouter --bootstrap root:{{ mysql_root_password }}@172.25.0.10:3306 --directory={{ router_config_dir }} --force
+  become: true
+  args:
+    creates: "{{ router_config_dir }}/mysqlrouter.conf"
+
+- name: 修改 router 配置文件
+  ansible.builtin.lineinfile:
+    path: "{{ router_config_dir }}/mysqlrouter.conf"
+    regexp: '^user='
+    line: 'user=mysql-router'
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mysql-router.service
+    content: |
+      [Unit]
+      Description=MySQL Router
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ router_user }}
+      Group={{ router_user }}
+      WorkingDirectory={{ router_install_dir }}
+      ExecStart={{ router_install_dir }}/bin/mysqlrouter -c {{ router_config_dir }}/mysqlrouter.conf
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 mysql-router 服务
+  ansible.builtin.systemd:
+    name: mysql-router
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/router.tar.xz
+    state: absent
+  become: true

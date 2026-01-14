@@ -1,0 +1,118 @@
+---
+- name: 创建 mongodb 用户
+  ansible.builtin.user:
+    name: "{{ mongodb_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ mongodb_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_user }}"
+    mode: '0755'
+  loop:
+    - "{{ mongodb_install_dir }}"
+    - "{{ mongodb_data_dir }}"
+    - "{{ mongodb_config_dir }}"
+    - "{{ mongodb_log_dir }}"
+  become: true
+
+- name: 下载 MongoDB
+  ansible.builtin.get_url:
+    url: "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-{{ mongodb_version }}.tgz"
+    dest: "/tmp/mongodb.tgz"
+    mode: '0644'
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 解压 MongoDB
+  ansible.builtin.unarchive:
+    src: /tmp/mongodb.tgz
+    dest: "{{ mongodb_install_dir }}"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_user }}"
+  become: true
+
+- name: 生成 keyfile
+  ansible.builtin.copy:
+    dest: "{{ mongodb_config_dir }}/keyfile"
+    content: "{{ mongodb_keyfile_content }}"
+    mode: '0600'
+    owner: "{{ mongodb_user }}"
+    group: "{{ mongodb_user }}"
+  become: true
+
+- name: 生成 MongoDB 配置文件
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: "{{ mongodb_config_dir }}/mongod.conf"
+    mode: '0644'
+  become: true
+  notify: restart mongodb
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mongodb.service
+    content: |
+      [Unit]
+      Description=MongoDB Server
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ mongodb_user }}
+      Group={{ mongodb_user }}
+      WorkingDirectory={{ mongodb_install_dir }}
+      ExecStart={{ mongodb_install_dir }}/bin/mongod --config {{ mongodb_config_dir }}/mongod.conf
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 MongoDB 服务
+  ansible.builtin.systemd:
+    name: mongodb
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 等待 MongoDB 启动
+  ansible.builtin.wait_for:
+    port: "{{ mongodb_port }}"
+    delay: 5
+    timeout: 60
+
+- name: 初始化副本集
+  ansible.builtin.shell: |
+    {{ mongodb_install_dir }}/bin/mongosh --eval "rs.initiate({_id: '{{ mongodb_replset_name }}', members: [{_id: 0, host: '172.27.0.10:{{ mongodb_port }}'}, {_id: 1, host: '172.27.0.11:{{ mongodb_port }}'}, {_id: 2, host: '172.27.0.12:{{ mongodb_port }}'}]})"
+  become: true
+  when: inventory_hostname == 'mongodb-1'
+  run_once: true
+
+- name: 创建管理员用户
+  ansible.builtin.shell: |
+    {{ mongodb_install_dir }}/bin/mongosh --eval "use admin; db.createUser({user: 'root', pwd: '{{ mongodb_root_password }}', roles: ['root']})"
+  become: true
+  when: inventory_hostname == 'mongodb-1'
+  run_once: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/mongodb.tgz
+    state: absent
+  become: true

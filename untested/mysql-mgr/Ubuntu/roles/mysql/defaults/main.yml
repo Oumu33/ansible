@@ -1,0 +1,13 @@
+---
+mysql_version: "{{ mysql_version }}"
+mysql_install_dir: "{{ mysql_install_dir }}"
+mysql_data_dir: "{{ mysql_data_dir }}"
+mysql_config_dir: "{{ mysql_config_dir }}"
+mysql_log_dir: "{{ mysql_log_dir }}"
+mysql_user: "{{ mysql_user }}"
+mysql_port: "{{ mysql_port }}"
+mysql_root_password: "{{ mysql_root_password }}"
+mysql_replication_user: "{{ mysql_replication_user }}"
+mysql_replication_password: "{{ mysql_replication_password }}"
+mysql_server_id: "{{ mysql_server_id_offset + groups['mgr_cluster'].index(inventory_hostname) + 1 }}"
+mgr_local_address: "{{ mgr_local_address }}"

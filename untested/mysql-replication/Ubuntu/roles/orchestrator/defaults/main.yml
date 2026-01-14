@@ -1,0 +1,9 @@
+---
+orchestrator_version: "{{ orchestrator_version }}"
+orchestrator_install_dir: "{{ orchestrator_install_dir }}"
+orchestrator_config_dir: "{{ orchestrator_config_dir }}"
+orchestrator_data_dir: "{{ orchestrator_data_dir }}"
+orchestrator_log_dir: "{{ orchestrator_log_dir }}"
+orchestrator_port: "{{ orchestrator_port }}"
+orchestrator_user: "{{ orchestrator_user }}"
+orchestrator_password: "{{ orchestrator_password }}"

@@ -1,0 +1,45 @@
+---
+# MongoDB 单机版全局变量
+
+# 版本
+mongodb_version: "7.0.9"
+
+# 安装目录
+mongodb_install_dir: "/opt/mongodb"
+mongodb_config_dir: "/etc/mongodb"
+mongodb_data_dir: "/var/lib/mongodb"
+mongodb_log_dir: "/var/log/mongodb"
+
+# 系统用户
+mongodb_user: "mongodb"
+mongodb_group: "mongodb"
+
+# MongoDB 配置
+mongodb_port: 27017
+mongodb_bind_ip: "0.0.0.0"
+mongodb_journal: "true"
+
+# MongoDB 内存配置
+mongodb_wired_tiger_cache_size_gb: 1
+
+# MongoDB 存储配置
+mongodb_storage_engine: "wiredTiger"
+mongodb_wired_tiger_collection_config_compression: "snappy"
+mongodb_wired_tiger_index_config_prefix_compression: "snappy"
+
+# MongoDB 日志配置
+mongodb_log_append: "true"
+mongodb_log_verbosity: 0
+
+# MongoDB 安全配置
+mongodb_enable_auth: "true"
+mongodb_root_user: "admin"
+mongodb_root_password: "admin_password"
+mongodb_auth_mechanism: "SCRAM-SHA-256"
+
+# 下载超时 (秒)
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

@@ -1,0 +1,51 @@
+version: '3.8'
+
+# Docker 测试环境 - MongoDB 副本集
+
+services:
+  # MongoDB 节点 1
+  mongodb-1:
+    image: rockylinux-ansible-test:9
+    container_name: mongodb-1
+    hostname: mongodb-1
+    privileged: true
+    networks:
+      mongodb-net:
+        ipv4_address: 172.27.0.10
+    command: tail -f /dev/null
+    ports:
+      - "27017:27017"
+
+  # MongoDB 节点 2
+  mongodb-2:
+    image: rockylinux-ansible-test:9
+    container_name: mongodb-2
+    hostname: mongodb-2
+    privileged: true
+    networks:
+      mongodb-net:
+        ipv4_address: 172.27.0.11
+    command: tail -f /dev/null
+    ports:
+      - "27018:27017"
+
+  # MongoDB 节点 3
+  mongodb-3:
+    image: rockylinux-ansible-test:9
+    container_name: mongodb-3
+    hostname: mongodb-3
+    privileged: true
+    networks:
+      mongodb-net:
+        ipv4_address: 172.27.0.12
+    command: tail -f /dev/null
+    ports:
+      - "27019:27017"
+
+networks:
+  mongodb-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.27.0.0/16
+          gateway: 172.27.0.1

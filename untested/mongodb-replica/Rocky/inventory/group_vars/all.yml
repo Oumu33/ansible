@@ -1,0 +1,28 @@
+---
+# MongoDB 副本集全局变量
+
+# MongoDB 版本
+mongodb_version: "7.0.14"
+
+# 安装目录
+mongodb_install_dir: "/usr/local/mongodb"
+mongodb_data_dir: "/var/lib/mongodb"
+mongodb_config_dir: "/etc/mongodb"
+mongodb_log_dir: "/var/log/mongodb"
+
+# 系统用户
+mongodb_user: "mongodb"
+
+# MongoDB 配置
+mongodb_port: 27017
+mongodb_bind: "0.0.0.0"
+mongodb_root_password: "MongoDB@123456"
+mongodb_keyfile_content: "mongodb-replica-key-12345678901234567890"
+mongodb_replset_name: "rs0"
+
+# 下载超时
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

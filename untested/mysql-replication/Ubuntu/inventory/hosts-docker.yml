@@ -1,0 +1,39 @@
+---
+# MySQL 主从复制集群主机清单 (Docker 连接)
+
+all:
+  children:
+    mysql:
+      hosts:
+        mysql-master:
+          ansible_host: mysql-master
+          ansible_connection: community.docker.docker
+          ansible_user: root
+          mysql_role: master
+          mysql_server_id: 101
+        mysql-slave-1:
+          ansible_host: mysql-slave-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+          mysql_role: slave
+          mysql_server_id: 102
+        mysql-slave-2:
+          ansible_host: mysql-slave-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+          mysql_role: slave
+          mysql_server_id: 103
+        orchestrator-1:
+          ansible_host: orchestrator-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+
+    mysql_cluster:
+      hosts:
+        mysql-master:
+        mysql-slave-1:
+        mysql-slave-2:
+
+    orchestrator:
+      hosts:
+        orchestrator-1:

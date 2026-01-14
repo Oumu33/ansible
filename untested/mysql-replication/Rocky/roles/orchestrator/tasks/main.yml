@@ -1,0 +1,130 @@
+---
+- name: 创建 orchestrator 用户
+  ansible.builtin.user:
+    name: "{{ orchestrator_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ orchestrator_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ orchestrator_user }}"
+    group: "{{ orchestrator_user }}"
+    mode: '0755'
+  loop:
+    - "{{ orchestrator_install_dir }}"
+    - "{{ orchestrator_config_dir }}"
+    - "{{ orchestrator_data_dir }}"
+    - "{{ orchestrator_log_dir }}"
+  become: true
+
+- name: 下载 orchestrator
+  ansible.builtin.get_url:
+    url: "https://github.com/openark/orchestrator/releases/download/v{{ orchestrator_version }}/orchestrator-{{ orchestrator_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/orchestrator.tar.gz"
+    mode: '0644'
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 解压 orchestrator
+  ansible.builtin.unarchive:
+    src: /tmp/orchestrator.tar.gz
+    dest: "{{ orchestrator_install_dir }}"
+    remote_src: true
+    owner: "{{ orchestrator_user }}"
+    group: "{{ orchestrator_user }}"
+  become: true
+
+- name: 生成 orchestrator 配置文件
+  ansible.builtin.copy:
+    dest: "{{ orchestrator_config_dir }}/conf.json"
+    content: |
+      {
+        "Debug": false,
+        "ListenAddress": ":{{ orchestrator_port }}",
+        "MySQLTopologyUser": "orchestrator",
+        "MySQLTopologyPassword": "{{ orchestrator_password }}",
+        "BackendDB": "sqlite",
+        "SQLite3DataFile": "{{ orchestrator_data_dir }}/orchestrator.sqlite3",
+        "DiscoverByShowSlaveHosts": true,
+        "InstancePollSeconds": 5,
+        "UnseenInstanceForgetHours": 24,
+        "DiscoveryPollSeconds": 5,
+        "RecoveryPeriodBlockSeconds": 60,
+        "RecoveryIgnoreHostnameFilters": [],
+        "RecoverMasterClusterFilters": ["*"],
+        "RecoverIntermediateMasterClusterFilters": ["*"],
+        "OnFailureDetectionProcesses": [
+          "echo 'Detected {failureType} on {failureCluster}. Affected: {failedHost}' >> /tmp/orchestrator-failure.log"
+        ],
+        "PreFailoverProcesses": [
+          "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/orchestrator-pre-failover.log"
+        ],
+        "PostFailoverProcesses": [
+          "echo '(for all types) Recovered from {failureType} on {failureCluster}. Failed: {failedHost}; Promoted: {successorHost}' >> /tmp/orchestrator-post-failover.log"
+        ],
+        "ApplyMySQLPromotionAfterMasterFailover": true,
+        "MasterFailoverLostInstancesDowntimeMinutes": 10,
+        "DetachLostSlavesAfterMasterFailover": true,
+        "DetachSlavesOnNoMaster": true
+      }
+    owner: "{{ orchestrator_user }}"
+    group: "{{ orchestrator_user }}"
+    mode: '0644'
+  become: true
+  notify: restart orchestrator
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/orchestrator.service
+    content: |
+      [Unit]
+      Description=Orchestrator MySQL HA Manager
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ orchestrator_user }}
+      Group={{ orchestrator_user }}
+      WorkingDirectory={{ orchestrator_install_dir }}
+      ExecStart={{ orchestrator_install_dir }}/orchestrator --config={{ orchestrator_config_dir }}/conf.json
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 orchestrator 服务
+  ansible.builtin.systemd:
+    name: orchestrator
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 在 MySQL 节点创建 orchestrator 用户
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "CREATE USER IF NOT EXISTS 'orchestrator'@'%' IDENTIFIED BY '{{ orchestrator_password }}'; GRANT SUPER, PROCESS, REPLICATION SLAVE, REPLICATION CLIENT, RELOAD ON *.* TO 'orchestrator'@'%'; GRANT SELECT ON mysql.slave_master_info TO 'orchestrator'@'%'; FLUSH PRIVILEGES;"
+  become: true
+  delegate_to: "{{ item }}"
+  loop:
+    - mysql-master
+    - mysql-slave-1
+    - mysql-slave-2
+  run_once: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/orchestrator.tar.gz
+    state: absent
+  become: true

@@ -1,0 +1,64 @@
+version: '3.8'
+
+# Docker 测试环境 - MySQL 主从复制 + Orchestrator
+
+services:
+  # MySQL Master
+  mysql-master:
+    image: rockylinux:9
+    container_name: mysql-master
+    hostname: mysql-master
+    privileged: true
+    networks:
+      mysql-net:
+        ipv4_address: 172.24.0.10
+    command: tail -f /dev/null
+    ports:
+      - "3306:3306"
+
+  # MySQL Slave 1
+  mysql-slave-1:
+    image: rockylinux:9
+    container_name: mysql-slave-1
+    hostname: mysql-slave-1
+    privileged: true
+    networks:
+      mysql-net:
+        ipv4_address: 172.24.0.11
+    command: tail -f /dev/null
+    ports:
+      - "3307:3306"
+
+  # MySQL Slave 2
+  mysql-slave-2:
+    image: rockylinux:9
+    container_name: mysql-slave-2
+    hostname: mysql-slave-2
+    privileged: true
+    networks:
+      mysql-net:
+        ipv4_address: 172.24.0.12
+    command: tail -f /dev/null
+    ports:
+      - "3308:3306"
+
+  # Orchestrator
+  orchestrator-1:
+    image: rockylinux:9
+    container_name: orchestrator-1
+    hostname: orchestrator-1
+    privileged: true
+    networks:
+      mysql-net:
+        ipv4_address: 172.24.0.13
+    command: tail -f /dev/null
+    ports:
+      - "3000:3000"
+
+networks:
+  mysql-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
+          gateway: 172.24.0.1

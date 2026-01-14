@@ -1,0 +1,9 @@
+---
+# 部署 MongoDB 副本集
+- name: 部署 MongoDB 副本集
+  hosts: mongodb_cluster
+  gather_facts: true
+  become: true
+
+  roles:
+    - mongodb

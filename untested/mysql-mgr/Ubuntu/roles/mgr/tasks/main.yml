@@ -1,0 +1,26 @@
+---
+- name: 在第一个节点启动 MGR 集群
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "SET GLOBAL group_replication_bootstrap_group=ON; START GROUP_REPLICATION; SET GLOBAL group_replication_bootstrap_group=OFF;"
+  become: true
+  when: inventory_hostname == 'mysql-mgr-1'
+
+- name: 在其他节点加入 MGR 集群
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "CHANGE MASTER TO MASTER_USER='{{ mysql_replication_user }}', MASTER_PASSWORD='{{ mysql_replication_password }}' FOR CHANNEL 'group_replication_recovery'; START GROUP_REPLICATION;"
+  become: true
+  when: inventory_hostname != 'mysql-mgr-1'
+
+- name: 等待 MGR 集群启动
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: 检查 MGR 集群状态
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "SELECT * FROM performance_schema.replication_group_members;"
+  become: true
+  register: mgr_status
+
+- name: 显示 MGR 集群状态
+  ansible.builtin.debug:
+    var: mgr_status.stdout_lines

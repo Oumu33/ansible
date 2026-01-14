@@ -1,0 +1,38 @@
+---
+# MySQL 主从复制 + Orchestrator 全局变量
+
+# MySQL 版本
+mysql_version: "8.0.40"
+
+# 安装目录
+mysql_install_dir: "/usr/local/mysql"
+mysql_data_dir: "/data/mysql"
+mysql_config_dir: "/etc/mysql"
+mysql_log_dir: "/var/log/mysql"
+
+# 系统用户
+mysql_user: "mysql"
+
+# MySQL 配置
+mysql_port: 3306
+mysql_root_password: "Root@123456"
+mysql_replication_user: "repl"
+mysql_replication_password: "Repl@123456"
+mysql_server_id_offset: 100
+
+# Orchestrator 配置
+orchestrator_version: "3.2.6"
+orchestrator_install_dir: "/usr/local/orchestrator"
+orchestrator_config_dir: "/etc/orchestrator"
+orchestrator_data_dir: "/var/lib/orchestrator"
+orchestrator_log_dir: "/var/log/orchestrator"
+orchestrator_port: 3000
+orchestrator_user: "orchestrator"
+orchestrator_password: "Orch@123456"
+
+# 下载超时
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

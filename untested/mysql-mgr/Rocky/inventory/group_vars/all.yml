@@ -1,0 +1,42 @@
+---
+# MySQL Group Replication + Router 全局变量
+
+# MySQL 版本
+mysql_version: "8.0.40"
+
+# 安装目录
+mysql_install_dir: "/usr/local/mysql"
+mysql_data_dir: "/data/mysql"
+mysql_config_dir: "/etc/mysql"
+mysql_log_dir: "/var/log/mysql"
+
+# 系统用户
+mysql_user: "mysql"
+
+# MySQL 配置
+mysql_port: 3306
+mysql_root_password: "Root@123456"
+mysql_replication_user: "repl"
+mysql_replication_password: "Repl@123456"
+mysql_server_id_offset: 100
+
+# MGR 配置
+mgr_group_name: "mgr_cluster"
+mgr_local_address: "172.25.0.10:33061"
+mgr_group_seeds: "172.25.0.10:33061,172.25.0.11:33061,172.25.0.12:33061"
+
+# Router 配置
+router_version: "8.0.40"
+router_install_dir: "/usr/local/mysql-router"
+router_config_dir: "/etc/mysql-router"
+router_log_dir: "/var/log/mysql-router"
+router_bootstrap_port: 6446
+router_read_write_port: 6447
+router_read_only_port: 6448
+
+# 下载超时
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

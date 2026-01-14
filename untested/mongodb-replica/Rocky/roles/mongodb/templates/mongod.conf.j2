@@ -1,0 +1,18 @@
+storage:
+  dbPath: {{ mongodb_data_dir }}
+  journal:
+    enabled: true
+
+systemLog:
+  destination: file
+  path: {{ mongodb_log_dir }}/mongod.log
+  logAppend: true
+
+net:
+  port: {{ mongodb_port }}
+  bindIp: {{ mongodb_bind }}
+
+replication:
+  replSetName: {{ mongodb_replset_name }}
+security:
+  keyFile: {{ mongodb_config_dir }}/keyfile

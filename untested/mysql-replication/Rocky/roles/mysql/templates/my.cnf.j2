@@ -1,0 +1,28 @@
+[mysqld]
+port = {{ mysql_port }}
+basedir = {{ mysql_install_dir }}
+datadir = {{ mysql_data_dir }}
+socket = /tmp/mysql.sock
+
+server-id = {{ mysql_server_id }}
+log-bin = mysql-bin
+binlog-format = ROW
+gtid-mode = ON
+enforce-gtid-consistency = ON
+
+{% if mysql_role == 'master' %}
+read-only = OFF
+{% else %}
+read-only = ON
+super-read-only = ON
+{% endif %}
+
+relay-log = relay-bin
+relay-log-index = relay-bin.index
+
+[client]
+port = {{ mysql_port }}
+socket = /tmp/mysql.sock
+
+[mysql]
+prompt = "\\u@\\h [\\d]> "

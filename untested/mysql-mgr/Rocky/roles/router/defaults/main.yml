@@ -1,0 +1,10 @@
+---
+router_version: "{{ router_version }}"
+router_install_dir: "{{ router_install_dir }}"
+router_config_dir: "{{ router_config_dir }}"
+router_log_dir: "{{ router_log_dir }}"
+router_bootstrap_port: "{{ router_bootstrap_port }}"
+router_read_write_port: "{{ router_read_write_port }}"
+router_read_only_port: "{{ router_read_only_port }}"
+router_user: "mysql-router"
+router_password: "Router@123456"

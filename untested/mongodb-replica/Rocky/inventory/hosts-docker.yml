@@ -1,0 +1,25 @@
+---
+# MongoDB 副本集主机清单（Docker 连接）
+
+all:
+  children:
+    mongodb:
+      hosts:
+        mongodb-1:
+          ansible_host: mongodb-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        mongodb-2:
+          ansible_host: mongodb-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        mongodb-3:
+          ansible_host: mongodb-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+
+    mongodb_cluster:
+      hosts:
+        mongodb-1:
+        mongodb-2:
+        mongodb-3:

@@ -1,0 +1,129 @@
+---
+- name: 创建 mysql 用户
+  ansible.builtin.user:
+    name: "{{ mysql_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ mysql_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ mysql_user }}"
+    group: "{{ mysql_user }}"
+    mode: '0755'
+  loop:
+    - "{{ mysql_install_dir }}"
+    - "{{ mysql_data_dir }}"
+    - "{{ mysql_config_dir }}"
+    - "{{ mysql_log_dir }}"
+  become: true
+
+- name: 安装 MySQL（使用 dnf）
+  ansible.builtin.dnf:
+    name:
+      - mysql-server
+      - mysql-client
+      - libmysqlclient-dev
+    state: present
+    update_cache: yes
+  become: true
+
+- name: 生成 MySQL 配置文件
+  ansible.builtin.template:
+    src: my.cnf.j2
+    dest: "{{ mysql_config_dir }}/my.cnf"
+    mode: '0644'
+  become: true
+  notify: restart mysql
+
+- name: 初始化 MySQL 数据目录
+  ansible.builtin.command:
+    cmd: "{{ mysql_install_dir }}/bin/mysqld --initialize-insecure --user={{ mysql_user }} --basedir={{ mysql_install_dir }} --datadir={{ mysql_data_dir }}"
+    creates: "{{ mysql_data_dir }}/mysql"
+  become: true
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mysql.service
+    content: |
+      [Unit]
+      Description=MySQL Community Server
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ mysql_user }}
+      Group={{ mysql_user }}
+      WorkingDirectory={{ mysql_install_dir }}
+      ExecStart={{ mysql_install_dir }}/bin/mysqld --defaults-file={{ mysql_config_dir }}/my.cnf
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 MySQL 服务
+  ansible.builtin.systemd:
+    name: mysql
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 等待 MySQL 启动
+  ansible.builtin.wait_for:
+    port: "{{ mysql_port }}"
+    delay: 5
+    timeout: 60
+
+- name: 设置 root 密码
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ mysql_root_password }}';"
+  become: true
+  when: mysql_role == 'master'
+
+- name: 创建复制用户
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "CREATE USER '{{ mysql_replication_user }}'@'%' IDENTIFIED BY '{{ mysql_replication_password }}'; GRANT REPLICATION SLAVE ON *.* TO '{{ mysql_replication_user }}'@'%'; FLUSH PRIVILEGES;"
+  become: true
+  when: mysql_role == 'master'
+
+- name: 获取 Master 状态
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "SHOW MASTER STATUS\G" | grep File | awk '{print $2}'
+  register: master_log_file
+  become: true
+  run_once: true
+  when: mysql_role == 'master'
+  delegate_to: mysql-master
+
+- name: 获取 Master Position
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "SHOW MASTER STATUS\G" | grep Position | awk '{print $2}'
+  register: master_log_pos
+  become: true
+  run_once: true
+  when: mysql_role == 'master'
+  delegate_to: mysql-master
+
+- name: 配置 Slave 复制
+  ansible.builtin.shell: |
+    {{ mysql_install_dir }}/bin/mysql -u root -p'{{ mysql_root_password }}' -e "CHANGE MASTER TO MASTER_HOST='172.24.0.10', MASTER_USER='{{ mysql_replication_user }}', MASTER_PASSWORD='{{ mysql_replication_password }}', MASTER_LOG_FILE='{{ hostvars['mysql-master']['master_log_file'].stdout }}', MASTER_LOG_POS={{ hostvars['mysql-master']['master_log_pos'].stdout }}; START SLAVE;"
+  become: true
+  when: mysql_role == 'slave'
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/mysql.tar.xz
+    state: absent
+  become: true

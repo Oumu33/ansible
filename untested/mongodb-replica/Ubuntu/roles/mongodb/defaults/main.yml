@@ -1,0 +1,12 @@
+---
+mongodb_version: "{{ mongodb_version }}"
+mongodb_install_dir: "{{ mongodb_install_dir }}"
+mongodb_data_dir: "{{ mongodb_data_dir }}"
+mongodb_config_dir: "{{ mongodb_config_dir }}"
+mongodb_log_dir: "{{ mongodb_log_dir }}"
+mongodb_user: "{{ mongodb_user }}"
+mongodb_port: "{{ mongodb_port }}"
+mongodb_bind: "{{ mongodb_bind }}"
+mongodb_root_password: "{{ mongodb_root_password }}"
+mongodb_keyfile_content: "{{ mongodb_keyfile_content }}"
+mongodb_replset_name: "{{ mongodb_replset_name }}"

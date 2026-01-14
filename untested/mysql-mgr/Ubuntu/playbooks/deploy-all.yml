@@ -1,0 +1,25 @@
+---
+# 部署 MySQL Group Replication + Router
+- name: 部署 MySQL MGR 集群
+  hosts: mgr_cluster
+  gather_facts: true
+  become: true
+
+  roles:
+    - mysql
+
+- name: 启动 MGR 集群
+  hosts: mgr_cluster
+  gather_facts: true
+  become: true
+
+  roles:
+    - mgr
+
+- name: 部署 MySQL Router
+  hosts: router
+  gather_facts: true
+  become: true
+
+  roles:
+    - router
