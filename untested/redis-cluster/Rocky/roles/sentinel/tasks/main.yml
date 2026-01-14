@@ -1,0 +1,42 @@
+---
+- name: 生成 Sentinel 配置文件
+  ansible.builtin.template:
+    src: sentinel.conf.j2
+    dest: "{{ redis_config_dir }}/sentinel.conf"
+    mode: '0644'
+  become: true
+  notify: restart sentinel
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/redis-sentinel.service
+    content: |
+      [Unit]
+      Description=Redis Sentinel
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ redis_user }}
+      Group={{ redis_user }}
+      WorkingDirectory={{ redis_install_dir }}
+      ExecStart={{ redis_install_dir }}/bin/redis-sentinel {{ redis_config_dir }}/sentinel.conf
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 Sentinel 服务
+  ansible.builtin.systemd:
+    name: redis-sentinel
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true

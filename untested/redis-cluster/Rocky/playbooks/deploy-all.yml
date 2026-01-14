@@ -1,0 +1,17 @@
+---
+# 部署 Redis 集群
+- name: 部署 Redis 集群
+  hosts: redis_cluster
+  gather_facts: true
+  become: true
+
+  roles:
+    - redis
+
+- name: 部署 Redis Sentinel
+  hosts: sentinel
+  gather_facts: true
+  become: true
+
+  roles:
+    - sentinel

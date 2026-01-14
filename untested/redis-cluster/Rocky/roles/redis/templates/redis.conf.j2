@@ -1,0 +1,31 @@
+bind {{ redis_bind }}
+port {{ redis_port }}
+protected-mode yes
+requirepass {{ redis_password }}
+
+daemonize no
+pidfile /var/run/redis.pid
+loglevel notice
+logfile {{ redis_log_dir }}/redis.log
+
+dir {{ redis_data_dir }}
+
+{% if cluster_enabled %}
+cluster-enabled yes
+cluster-config-file nodes.conf
+cluster-node-timeout {{ cluster_node_timeout }}
+cluster-replica-validity-factor 10
+cluster-migration-barrier 1
+cluster-require-full-coverage yes
+{% endif %}
+
+maxmemory {{ redis_maxmemory }}
+maxmemory-policy {{ redis_maxmemory_policy }}
+
+appendonly yes
+appendfilename "appendonly.aof"
+appendfsync everysec
+
+save 900 1
+save 300 10
+save 60 10000

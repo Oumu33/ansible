@@ -1,0 +1,16 @@
+---
+# GitLab 默认配置
+gitlab_version: 17.5.0
+gitlab_download_url: https://packages.gitlab.com/gitlab/gitlab-ce/packages/el/9/gitlab-ce-{{ gitlab_version }}-ce.0.el9.x86_64.rpm
+gitlab_external_url: http://gitlab-server
+gitlab_root_password: admin123
+gitlab_data_dir: /var/opt/gitlab
+gitlab_config_dir: /etc/gitlab
+gitlab_log_dir: /var/log/gitlab
+gitlab_backup_dir: /var/opt/gitlab/backups
+gitlab_max_concurrency: 2
+gitlab_unicorn_worker_timeout: 60
+gitlab_sidekiq_concurrency: 25
+
+# 下载目录
+download_dir: /tmp/downloads

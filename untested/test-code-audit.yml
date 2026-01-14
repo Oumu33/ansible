@@ -1,0 +1,55 @@
+---
+- name: 测试代码审计部署
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    sonarqube_download: /opt/ansible/downloads/sonarqube-10.6.0.92116.zip
+    jenkins_download: /opt/ansible/downloads/jenkins-2.452.1.war
+
+  tasks:
+    - name: 测试 SonarQube 下载包
+      ansible.builtin.stat:
+        path: "{{ sonarqube_download }}"
+      register: sonarqube_file
+
+    - name: 显示 SonarQube 状态
+      ansible.builtin.debug:
+        msg: "SonarQube 下载包存在: {{ sonarqube_file.stat.exists }}"
+
+    - name: 测试 Jenkins WAR 包
+      ansible.builtin.stat:
+        path: "{{ jenkins_download }}"
+      register: jenkins_file
+
+    - name: 显示 Jenkins 状态
+      ansible.builtin.debug:
+        msg: "Jenkins WAR 包存在: {{ jenkins_file.stat.exists }}"
+
+    - name: 检查 Rocky Linux 镜像
+      ansible.builtin.command: docker images --filter "reference=rockylinux*" --format "{{ '{{' }}.Repository{{ '}}:{{' }}.Tag{{ '}}' }}"
+      register: rocky_images
+      changed_when: false
+
+    - name: 显示 Rocky Linux 镜像
+      ansible.builtin.debug:
+        msg: "可用的 Rocky Linux 镜像: {{ rocky_images.stdout_lines }}"
+
+    - name: 检查内存使用情况
+      ansible.builtin.command: free -m | grep Mem
+      register: memory_info
+      changed_when: false
+
+    - name: 显示内存信息
+      ansible.builtin.debug:
+        msg: "{{ memory_info.stdout }}"
+
+    - name: 检查磁盘空间
+      ansible.builtin.command: df -h /opt/ansible | tail -1
+      register: disk_info
+      changed_when: false
+
+    - name: 显示磁盘信息
+      ansible.builtin.debug:
+        msg: "{{ disk_info.stdout }}"

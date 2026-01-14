@@ -1,0 +1,118 @@
+---
+- name: 安装 Ansible firewalld 模块依赖
+  ansible.builtin.dnf:
+    name:
+      - python3-firewall
+    state: present
+    update_cache: yes
+  ignore_errors: yes
+
+- name: 安装 Java 17
+  ansible.builtin.dnf:
+    name:
+      - java-17-openjdk
+      - java-17-openjdk-devel
+    state: present
+    update_cache: yes
+
+- name: 设置 Java 17 为默认版本
+  ansible.builtin.command: alternatives --set java /usr/lib/jvm/java-17-openjdk/bin/java
+  changed_when: false
+
+- name: 创建 Jenkins 用户
+  ansible.builtin.user:
+    name: "{{ jenkins_user }}"
+    system: yes
+    shell: /bin/bash
+    home: "{{ jenkins_home }}"
+    create_home: yes
+
+- name: 创建 Jenkins 安装目录
+  ansible.builtin.file:
+    path: "{{ jenkins_install_dir }}"
+    state: directory
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0755'
+
+- name: 创建 Jenkins 工作目录
+  ansible.builtin.file:
+    path: "{{ jenkins_home }}"
+    state: directory
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0755'
+
+- name: 创建下载目录
+  ansible.builtin.file:
+    path: "{{ download_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: 下载 Jenkins WAR 包
+  ansible.builtin.get_url:
+    url: "{{ jenkins_download_url }}"
+    dest: "{{ jenkins_install_dir }}/jenkins.war"
+    mode: '0644'
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    timeout: 600
+
+- name: 确保 firewalld 允许 Jenkins 端口
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - "{{ jenkins_port }}"
+    - "{{ jenkins_agent_port }}"
+  ignore_errors: yes
+
+- name: 创建 Jenkins 启动脚本
+  ansible.builtin.template:
+    src: jenkins.sh.j2
+    dest: "{{ jenkins_install_dir }}/jenkins.sh"
+    mode: '0755'
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+  notify: 重启 Jenkins 服务
+
+- name: 创建 Jenkins systemd 服务文件
+  ansible.builtin.template:
+    src: jenkins.service.j2
+    dest: /etc/systemd/system/jenkins.service
+    mode: '0644'
+  notify: 重启 Jenkins 服务
+
+- name: 重新加载 systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: 启用并启动 Jenkins 服务
+  ansible.builtin.systemd:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: 等待 Jenkins 服务启动
+  ansible.builtin.wait_for:
+    port: "{{ jenkins_port }}"
+    delay: 30
+    timeout: 300
+
+- name: 获取 Jenkins 初始管理员密码
+  ansible.builtin.slurp:
+    src: "{{ jenkins_home }}/secrets/initialAdminPassword"
+  register: jenkins_password
+  ignore_errors: yes
+  failed_when: false
+
+- name: 显示 Jenkins 访问信息
+  ansible.builtin.debug:
+    msg:
+      - "Jenkins 已成功部署"
+      - "访问地址: http://{{ ansible_default_ipv4.address }}:{{ jenkins_port }}"
+      - "Agent 端口: {{ jenkins_agent_port }}"
+      - "初始管理员密码: 请查看 {{ jenkins_home }}/secrets/initialAdminPassword 文件"
+      - "首次访问时需要使用初始密码进行解锁"

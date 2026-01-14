@@ -1,0 +1,18 @@
+---
+# SonarQube 代码质量分析平台主机清单（Docker 连接）
+
+all:
+  children:
+    sonarqube:
+      hosts:
+        sonarqube-1:
+          ansible_host: sonarqube-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+
+    postgresql:
+      hosts:
+        postgresql-1:
+          ansible_host: postgresql-1
+          ansible_connection: community.docker.docker
+          ansible_user: root

@@ -1,0 +1,19 @@
+[Unit]
+Description=ArgoCD Server
+After=network.target
+
+[Service]
+Type=simple
+User={{ argocd_user }}
+Group={{ argocd_group }}
+WorkingDirectory={{ argocd_install_dir }}
+ExecStart={{ argocd_install_dir }}/argocd-server.sh
+Restart=always
+RestartSec=10
+
+# 环境变量
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="ARGOCD_HOME={{ argocd_home }}"
+
+[Install]
+WantedBy=multi-user.target

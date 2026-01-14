@@ -1,0 +1,131 @@
+---
+# SonarQube 安装和配置任务
+
+- name: 安装 Java 运行环境
+  dnf:
+    name:
+      - java-17-openjdk
+      - java-17-openjdk-devel
+    state: present
+    update_cache: yes
+
+- name: 创建 SonarQube 系统用户
+  user:
+    name: "{{ sonarqube_user }}"
+    system: yes
+    shell: /bin/bash
+    home: "{{ sonarqube_install_dir }}"
+    create_home: no
+
+- name: 创建 SonarQube 目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ sonarqube_user }}"
+    group: "{{ sonarqube_group }}"
+    mode: '0755'
+  loop:
+    - "{{ sonarqube_install_dir }}"
+    - "{{ sonarqube_data_dir }}"
+    - "{{ sonarqube_log_dir }}"
+    - "{{ sonarqube_temp_dir }}"
+
+- name: 检查 SonarQube 是否已安装
+  stat:
+    path: "{{ sonarqube_install_dir }}/bin/sonar.sh"
+  register: sonarqube_installed
+
+- name: 下载 SonarQube
+  get_url:
+    url: "https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-{{ sonarqube_version }}.zip"
+    dest: "/tmp/sonarqube-{{ sonarqube_version }}.zip"
+    timeout: "{{ download_timeout }}"
+  register: download_sonarqube
+  when: not sonarqube_installed.stat.exists
+
+- name: 安装 unzip 工具
+  dnf:
+    name: unzip
+    state: present
+  when: not sonarqube_installed.stat.exists
+
+- name: 解压 SonarQube
+  unarchive:
+    src: "/tmp/sonarqube-{{ sonarqube_version }}.zip"
+    dest: /tmp
+    remote_src: yes
+  when: not sonarqube_installed.stat.exists
+
+- name: 复制 SonarQube 文件到安装目录
+  shell: |
+    cp -r /tmp/sonarqube-{{ sonarqube_version }}/* {{ sonarqube_install_dir }}/
+  when: not sonarqube_installed.stat.exists
+
+- name: 设置 SonarQube 目录权限
+  file:
+    path: "{{ sonarqube_install_dir }}"
+    owner: "{{ sonarqube_user }}"
+    group: "{{ sonarqube_group }}"
+    recurse: yes
+
+- name: 配置 SonarQube sonar.properties
+  template:
+    src: sonar.properties.j2
+    dest: "{{ sonarqube_install_dir }}/conf/sonar.properties"
+    owner: "{{ sonarqube_user }}"
+    group: "{{ sonarqube_group }}"
+    mode: '0644'
+  notify: 重启 SonarQube 服务
+
+- name: 配置 SonarQube wrapper.conf
+  template:
+    src: wrapper.conf.j2
+    dest: "{{ sonarqube_install_dir }}/conf/wrapper.conf"
+    owner: "{{ sonarqube_user }}"
+    group: "{{ sonarqube_group }}"
+    mode: '0644'
+  notify: 重启 SonarQube 服务
+
+- name: 配置 SonarQube sonar.sh 权限
+  file:
+    path: "{{ sonarqube_install_dir }}/bin/sonar.sh"
+    mode: '0755'
+    owner: "{{ sonarqube_user }}"
+    group: "{{ sonarqube_group }}"
+
+- name: 创建 SonarQube systemd 服务文件
+  copy:
+    dest: /etc/systemd/system/sonarqube.service
+    content: |
+      [Unit]
+      Description=SonarQube service
+      After=syslog.target network.target
+
+      [Service]
+      Type=forking
+      ExecStart={{ sonarqube_install_dir }}/bin/sonar.sh start
+      ExecStop={{ sonarqube_install_dir }}/bin/sonar.sh stop
+      User={{ sonarqube_user }}
+      Group={{ sonarqube_group }}
+      Restart=always
+      LimitNOFILE=65536
+      LimitNPROC=4096
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: 重新加载 systemd
+  systemd:
+    daemon_reload: yes
+
+- name: 启动并启用 SonarQube 服务
+  systemd:
+    name: sonarqube
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+
+- name: 等待 SonarQube 启动
+  wait_for:
+    port: "{{ sonarqube_port }}"
+    delay: 10
+    timeout: 180

@@ -1,0 +1,27 @@
+---
+# ArgoCD 默认配置
+argocd_version: v2.10.0
+
+# 用户和组配置
+argocd_user: argocd
+argocd_group: argocd
+argocd_home: /var/lib/argocd
+argocd_install_dir: /opt/argocd
+argocd_config_dir: /etc/argocd
+argocd_data_dir: /var/lib/argocd/data
+
+# 端口配置
+argocd_http_port: 8080
+argocd_https_port: 8443
+
+# 认证配置
+argocd_admin_password: admin123
+
+# 下载 URL 配置
+argocd_cli_download_url: https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-linux-amd64
+argocd_server_download_url: https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-server-linux-amd64
+argocd_controller_download_url: https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-applicationset-controller-linux-amd64
+argocd_repo_download_url: https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-repo-server-linux-amd64
+
+# 下载目录
+download_dir: /tmp/downloads

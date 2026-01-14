@@ -1,0 +1,15 @@
+[Unit]
+Description=ArgoCD Server
+After=network.target
+
+[Service]
+Type=simple
+User=argocd
+Group=argocd
+WorkingDirectory=/opt/argocd
+ExecStart=/opt/argocd/argocd-server.sh
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

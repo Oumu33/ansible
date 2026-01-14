@@ -1,0 +1,17 @@
+---
+# Jenkins 默认配置
+jenkins_version: 2.452.1
+jenkins_download_url: https://get.jenkins.io/war/{{ jenkins_version }}/jenkins.war
+jenkins_install_dir: /opt/jenkins
+jenkins_home: /var/lib/jenkins
+jenkins_port: 8080
+jenkins_agent_port: 50000
+jenkins_user: jenkins
+jenkins_group: jenkins
+jenkins_java_opts: "-Xmx1024m -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85"
+jenkins_admin_password: admin123
+jenkins_http_port: 8080
+jenkins_ajp_port: 8009
+
+# 下载目录
+download_dir: /tmp/downloads

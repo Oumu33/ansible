@@ -1,0 +1,40 @@
+---
+# Redis 集群全局变量
+
+# Redis 版本
+redis_version: "7.2.5"
+
+# 安装目录
+redis_install_dir: "/usr/local/redis"
+redis_config_dir: "/etc/redis"
+redis_data_dir: "/var/lib/redis"
+redis_log_dir: "/var/log/redis"
+
+# 系统用户
+redis_user: "redis"
+
+# Redis 配置
+redis_port: 6379
+redis_bind: "0.0.0.0"
+redis_password: "Redis@123456"
+redis_maxmemory: "2gb"
+redis_maxmemory_policy: "allkeys-lru"
+
+# Sentinel 配置
+sentinel_port: 26379
+sentinel_password: "Sentinel@123456"
+sentinel_quorum: 2
+sentinel_down_after_milliseconds: 5000
+sentinel_failover_timeout: 60000
+
+# Redis Cluster 配置
+cluster_enabled: true
+cluster_node_timeout: 5000
+cluster_replicas: 1
+
+# 下载超时
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

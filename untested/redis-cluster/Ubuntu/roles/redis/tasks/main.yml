@@ -1,0 +1,108 @@
+---
+- name: 创建 redis 用户
+  ansible.builtin.user:
+    name: "{{ redis_user }}"
+    system: true
+    shell: /bin/false
+    home: "{{ redis_install_dir }}"
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ redis_user }}"
+    group: "{{ redis_user }}"
+    mode: '0755'
+  loop:
+    - "{{ redis_install_dir }}"
+    - "{{ redis_config_dir }}"
+    - "{{ redis_data_dir }}"
+    - "{{ redis_log_dir }}"
+  become: true
+
+- name: 检查 Redis 是否已下载
+  ansible.builtin.stat:
+    path: /tmp/redis.tar.gz
+  register: redis_file
+  become: true
+
+- name: 下载 Redis
+  ansible.builtin.get_url:
+    url: "https://download.redis.io/releases/redis-{{ redis_version }}.tar.gz"
+    dest: "/tmp/redis.tar.gz"
+    mode: '0644'
+    timeout: "{{ download_timeout }}"
+  become: true
+  when: not redis_file.stat.exists
+
+- name: 安装编译依赖
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - tcl
+    state: present
+    update_cache: yes
+  become: true
+
+- name: 解压 Redis
+  ansible.builtin.unarchive:
+    src: /tmp/redis.tar.gz
+    dest: /tmp/
+    remote_src: true
+  become: true
+
+- name: 编译 Redis
+  ansible.builtin.shell:
+    cmd: make -j$(nproc) && make install PREFIX={{ redis_install_dir }}
+    chdir: "/tmp/redis-{{ redis_version }}"
+  become: true
+
+- name: 生成 Redis 配置文件
+  ansible.builtin.template:
+    src: redis.conf.j2
+    dest: "{{ redis_config_dir }}/redis.conf"
+    mode: '0644'
+  become: true
+  notify: restart redis
+
+- name: 创建 systemd 服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/redis.service
+    content: |
+      [Unit]
+      Description=Redis Server
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ redis_user }}
+      Group={{ redis_user }}
+      WorkingDirectory={{ redis_install_dir }}
+      ExecStart={{ redis_install_dir }}/bin/redis-server {{ redis_config_dir }}/redis.conf
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+  notify: reload systemd
+
+- name: 启动并启用 Redis 服务
+  ansible.builtin.systemd:
+    name: redis
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/redis.tar.gz
+    state: absent
+  become: true

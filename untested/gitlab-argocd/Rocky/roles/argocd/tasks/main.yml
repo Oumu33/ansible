@@ -1,0 +1,167 @@
+---
+- name: 安装 Ansible firewalld 模块依赖
+  ansible.builtin.dnf:
+    name:
+      - python3-firewall
+    state: present
+    update_cache: yes
+  ignore_errors: yes
+
+- name: 安装必要的依赖
+  ansible.builtin.dnf:
+    name:
+      - wget
+      - curl
+      - git
+      - golang
+    state: present
+    update_cache: yes
+
+- name: 创建 ArgoCD 用户
+  ansible.builtin.user:
+    name: "{{ argocd_user }}"
+    system: yes
+    shell: /bin/bash
+    home: "{{ argocd_home }}"
+    create_home: yes
+
+- name: 创建 ArgoCD 安装目录
+  ansible.builtin.file:
+    path: "{{ argocd_install_dir }}"
+    state: directory
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    mode: '0755'
+
+- name: 创建 ArgoCD 工作目录
+  ansible.builtin.file:
+    path: "{{ argocd_home }}"
+    state: directory
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    mode: '0755'
+
+- name: 创建下载目录
+  ansible.builtin.file:
+    path: "{{ download_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: 下载 ArgoCD CLI
+  ansible.builtin.get_url:
+    url: "{{ argocd_cli_download_url }}"
+    dest: /usr/local/bin/argocd
+    mode: '0755'
+    timeout: 300
+
+- name: 验证 ArgoCD CLI 安装
+  ansible.builtin.command: argocd version --client
+  register: argocd_version_check
+  changed_when: false
+  failed_when: argocd_version_check.rc != 0
+
+- name: 下载 ArgoCD Server 二进制文件
+  ansible.builtin.get_url:
+    url: "{{ argocd_server_download_url }}"
+    dest: "{{ argocd_install_dir }}/argocd-server"
+    mode: '0755'
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    timeout: 600
+
+- name: 下载 ArgoCD Application Controller 二进制文件
+  ansible.builtin.get_url:
+    url: "{{ argocd_controller_download_url }}"
+    dest: "{{ argocd_install_dir }}/argocd-applicationset-controller"
+    mode: '0755'
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    timeout: 600
+
+- name: 下载 ArgoCD Repo Server 二进制文件
+  ansible.builtin.get_url:
+    url: "{{ argocd_repo_download_url }}"
+    dest: "{{ argocd_install_dir }}/argocd-repo-server"
+    mode: '0755'
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    timeout: 600
+
+- name: 创建 ArgoCD 配置目录
+  ansible.builtin.file:
+    path: "{{ argocd_config_dir }}"
+    state: directory
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    mode: '0755'
+
+- name: 创建 ArgoCD 数据目录
+  ansible.builtin.file:
+    path: "{{ argocd_data_dir }}"
+    state: directory
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+    mode: '0755'
+
+- name: 确保 firewalld 允许 ArgoCD 端口
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - "{{ argocd_http_port }}"
+    - "{{ argocd_https_port }}"
+  ignore_errors: yes
+
+- name: 创建 ArgoCD Server 启动脚本
+  ansible.builtin.template:
+    src: argocd-server.sh.j2
+    dest: "{{ argocd_install_dir }}/argocd-server.sh"
+    mode: '0755'
+    owner: "{{ argocd_user }}"
+    group: "{{ argocd_group }}"
+  notify: 重启 ArgoCD Server
+
+- name: 创建 ArgoCD Server systemd 服务文件
+  ansible.builtin.template:
+    src: argocd-server.service.j2
+    dest: /etc/systemd/system/argocd-server.service
+    mode: '0644'
+  notify: 重启 ArgoCD Server
+
+- name: 重新加载 systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: 启用并启动 ArgoCD Server 服务
+  ansible.builtin.systemd:
+    name: argocd-server
+    state: started
+    enabled: yes
+
+- name: 等待 ArgoCD Server 服务启动
+  ansible.builtin.wait_for:
+    port: "{{ argocd_http_port }}"
+    delay: 10
+    timeout: 300
+
+- name: 设置 ArgoCD 初始管理员密码
+  ansible.builtin.shell: |
+    echo "{{ argocd_admin_password }}" | argocd account update-password --account admin --current-password admin --new-password-stdin
+  register: argocd_password_update
+  changed_when: argocd_password_update.rc == 0
+  failed_when: argocd_password_update.rc != 0
+  ignore_errors: yes
+
+- name: 显示 ArgoCD 访问信息
+  ansible.builtin.debug:
+    msg:
+      - "ArgoCD 已成功部署"
+      - "HTTP 访问地址: http://{{ ansible_default_ipv4.address }}:{{ argocd_http_port }}"
+      - "HTTPS 访问地址: https://{{ ansible_default_ipv4.address }}:{{ argocd_https_port }}"
+      - "默认用户: admin"
+      - "初始密码: {{ argocd_admin_password }}"
+      - "首次登录后请使用以下命令修改密码:"
+      - "  argocd login {{ ansible_default_ipv4.address }}:{{ argocd_http_port }} --insecure"
+      - "  argocd account update-password"

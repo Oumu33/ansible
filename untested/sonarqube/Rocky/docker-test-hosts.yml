@@ -1,0 +1,40 @@
+version: '3.8'
+
+# Docker 测试环境 - SonarQube + PostgreSQL
+
+services:
+  # PostgreSQL 数据库
+  postgresql-1:
+    image: rockylinux-ansible-test:9
+    container_name: postgresql-1
+    hostname: postgresql-1
+    privileged: true
+    networks:
+      sonarqube-net:
+        ipv4_address: 172.28.0.31
+    command: tail -f /dev/null
+    ports:
+      - "5432:5432"
+
+  # SonarQube 代码质量分析平台
+  sonarqube-1:
+    image: rockylinux-ansible-test:9
+    container_name: sonarqube-1
+    hostname: sonarqube-1
+    privileged: true
+    networks:
+      sonarqube-net:
+        ipv4_address: 172.28.0.30
+    command: tail -f /dev/null
+    ports:
+      - "9000:9000"
+    depends_on:
+      - postgresql-1
+
+networks:
+  sonarqube-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1

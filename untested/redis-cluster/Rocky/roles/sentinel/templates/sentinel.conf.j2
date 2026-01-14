@@ -1,0 +1,11 @@
+port {{ sentinel_port }}
+sentinel monitor mymaster {{ redis_master_host }} {{ redis_master_port }} {{ sentinel_quorum }}
+sentinel auth-pass mymaster {{ redis_master_password }}
+sentinel down-after-milliseconds mymaster {{ sentinel_down_after_milliseconds }}
+sentinel parallel-syncs mymaster 1
+sentinel failover-timeout mymaster {{ sentinel_failover_timeout }}
+sentinel deny-scripts-reconfig yes
+sentinel resolve-hostnames no
+sentinel announce-hostnames no
+protected-mode yes
+requirepass {{ sentinel_password }}

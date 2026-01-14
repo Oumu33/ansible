@@ -1,0 +1,90 @@
+version: '3.8'
+
+# Docker 测试环境 - Redis 集群
+
+services:
+  # Redis Master
+  redis-1:
+    image: rockylinux:9
+    container_name: redis-1
+    hostname: redis-1
+    privileged: true
+    networks:
+      redis-net:
+        ipv4_address: 172.26.0.10
+    command: tail -f /dev/null
+    ports:
+      - "6379:6379"
+
+  # Redis Slave 1
+  redis-2:
+    image: rockylinux:9
+    container_name: redis-2
+    hostname: redis-2
+    privileged: true
+    networks:
+      redis-net:
+        ipv4_address: 172.26.0.11
+    command: tail -f /dev/null
+    ports:
+      - "6380:6379"
+
+  # Redis Slave 2
+  redis-3:
+    image: rockylinux:9
+    container_name: redis-3
+    hostname: redis-3
+    privileged: true
+    networks:
+      redis-net:
+        ipv4_address: 172.26.0.12
+    command: tail -f /dev/null
+    ports:
+      - "6381:6379"
+
+  # Sentinel 1
+  sentinel-1:
+    image: rockylinux:9
+    container_name: sentinel-1
+    hostname: sentinel-1
+    privileged: true
+    networks:
+      redis-net:
+        ipv4_address: 172.26.0.13
+    command: tail -f /dev/null
+    ports:
+      - "26379:26379"
+
+  # Sentinel 2
+  sentinel-2:
+    image: rockylinux:9
+    container_name: sentinel-2
+    hostname: sentinel-2
+    privileged: true
+    networks:
+      redis-net:
+        ipv4_address: 172.26.0.14
+    command: tail -f /dev/null
+    ports:
+      - "26380:26379"
+
+  # Sentinel 3
+  sentinel-3:
+    image: rockylinux:9
+    container_name: sentinel-3
+    hostname: sentinel-3
+    privileged: true
+    networks:
+      redis-net:
+        ipv4_address: 172.26.0.15
+    command: tail -f /dev/null
+    ports:
+      - "26381:26379"
+
+networks:
+  redis-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
+          gateway: 172.26.0.1

@@ -1,0 +1,46 @@
+---
+# Redis 集群主机清单（Docker 连接）
+
+all:
+  children:
+    redis:
+      hosts:
+        redis-1:
+          ansible_host: redis-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+          redis_role: master
+        redis-2:
+          ansible_host: redis-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+          redis_role: slave
+        redis-3:
+          ansible_host: redis-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+          redis_role: slave
+        sentinel-1:
+          ansible_host: sentinel-1
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        sentinel-2:
+          ansible_host: sentinel-2
+          ansible_connection: community.docker.docker
+          ansible_user: root
+        sentinel-3:
+          ansible_host: sentinel-3
+          ansible_connection: community.docker.docker
+          ansible_user: root
+
+    redis_cluster:
+      hosts:
+        redis-1:
+        redis-2:
+        redis-3:
+
+    sentinel:
+      hosts:
+        sentinel-1:
+        sentinel-2:
+        sentinel-3:

@@ -1,0 +1,49 @@
+# SonarQube Wrapper 配置文件
+
+wrapper.java.command=java
+wrapper.java.command.loglevel=INFO
+
+# Java 类路径
+wrapper.java.classpath.1={{ sonarqube_install_dir }}/lib/common/*.jar
+wrapper.java.classpath.2={{ sonarqube_install_dir }}/lib/server/*.jar
+
+# Java 主类
+wrapper.java.mainclass=org.sonar.application.App
+
+# JVM 参数
+wrapper.java.additional.1=-Djava.awt.headless=true
+wrapper.java.additional.2=-Djava.io.tmpdir={{ sonarqube_temp_dir }}
+wrapper.java.additional.3=-Xmx{{ sonarqube_web_jvm_opts | regex_replace('-Xmx(\\d+[gGmM]).*', '\\1') }}
+wrapper.java.additional.4=-Xms{{ sonarqube_web_jvm_opts | regex_replace('-Xms(\\d+[gGmM]).*', '\\1') }}
+
+# 初始 Java 堆大小
+wrapper.java.initmemory=128
+
+# 最大 Java 堆大小
+wrapper.java.maxmemory=2048
+
+# 应用程序参数
+wrapper.app.parameter.1={{ sonarqube_install_dir }}
+wrapper.app.parameter.2={{ sonarqube_data_dir }}
+
+# 服务配置
+wrapper.console.title=SonarQube
+wrapper.console.loglevel=INFO
+wrapper.logfile={{ sonarqube_log_dir }}/wrapper.log
+wrapper.logfile.loglevel=INFO
+wrapper.logfile.maxsize=10m
+wrapper.logfile.maxfiles=10
+wrapper.syslog.loglevel=NONE
+
+# 信号配置
+wrapper.pidfile={{ sonarqube_data_dir }}/run/sonar.pid
+wrapper.lockfile={{ sonarqube_data_dir }}/run/sonar.lck
+
+# 启动配置
+wrapper.startup.timeout=300
+wrapper.shutdown.timeout=30
+wrapper.ping.timeout=120
+
+# 其他配置
+wrapper.disable_restarts=FALSE
+wrapper.on_exit.default=SHUTDOWN

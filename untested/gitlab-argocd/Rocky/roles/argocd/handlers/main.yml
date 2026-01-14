@@ -1,0 +1,6 @@
+---
+- name: 重启 ArgoCD Server
+  ansible.builtin.systemd:
+    name: argocd-server
+    state: restarted
+    daemon_reload: yes

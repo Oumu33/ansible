@@ -1,0 +1,22 @@
+#!/bin/bash
+# ArgoCD Server 启动脚本
+
+ARGOCD_HOME="{{ argocd_home }}"
+ARGOCD_INSTALL_DIR="{{ argocd_install_dir }}"
+ARGOCD_CONFIG_DIR="{{ argocd_config_dir }}"
+ARGOCD_DATA_DIR="{{ argocd_data_dir }}"
+ARGOCD_VERSION="{{ argocd_version }}"
+
+export PATH=/usr/local/bin:$PATH
+
+echo "Starting ArgoCD Server..."
+echo "Version: $ARGOCD_VERSION"
+echo "HTTP Port: {{ argocd_http_port }}"
+echo "HTTPS Port: {{ argocd_https_port }}"
+
+# 启动 ArgoCD Server
+cd "$ARGOCD_INSTALL_DIR"
+exec "$ARGOCD_INSTALL_DIR/argocd-server" \
+  --insecure \
+  --port {{ argocd_http_port }} \
+  --staticassets /usr/local/share/argocd/ui

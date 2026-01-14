@@ -1,0 +1,7 @@
+---
+# PostgreSQL handlers
+
+- name: 重启 PostgreSQL 服务
+  systemd:
+    name: postgresql-{{ postgresql_version }}
+    state: restarted

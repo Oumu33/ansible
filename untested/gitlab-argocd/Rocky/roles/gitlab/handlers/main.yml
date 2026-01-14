@@ -1,0 +1,14 @@
+---
+- name: 重新配置 GitLab
+  ansible.builtin.command: gitlab-ctl reconfigure
+  register: gitlab_reconfigure
+  changed_when: gitlab_reconfigure.rc == 0
+  failed_when: gitlab_reconfigure.rc != 0
+  async: 600
+  poll: 10
+
+- name: 重启 GitLab
+  ansible.builtin.command: gitlab-ctl restart
+  register: gitlab_restart
+  changed_when: gitlab_restart.rc == 0
+  failed_when: gitlab_restart.rc != 0

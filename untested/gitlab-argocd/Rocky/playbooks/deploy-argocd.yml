@@ -1,0 +1,8 @@
+---
+- name: 部署 ArgoCD
+  hosts: argocd_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - argocd

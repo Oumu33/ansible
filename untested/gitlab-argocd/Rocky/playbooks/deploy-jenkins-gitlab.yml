@@ -1,0 +1,9 @@
+---
+- name: 部署 Jenkins 和 GitLab
+  hosts: jenkins_servers, gitlab_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - jenkins
+    - gitlab

@@ -1,0 +1,34 @@
+---
+# SonarQube 配置文件
+
+# Web 配置
+sonar.web.host={{ sonarqube_web_host }}
+sonar.web.port={{ sonarqube_port }}
+sonar.web.context={{ sonarqube_context_path }}
+sonar.web.javaAdditionalOpts={{ sonarqube_web_jvm_opts }}
+
+# Compute Engine 配置
+sonar.ce.javaAdditionalOpts={{ sonarqube_ce_jvm_opts }}
+
+# Elasticsearch 配置
+sonar.search.javaAdditionalOpts={{ sonarqube_search_jvm_opts }}
+
+# 数据库配置 (PostgreSQL)
+sonar.jdbc.username={{ postgresql_user }}
+sonar.jdbc.password={{ postgresql_password }}
+sonar.jdbc.url=jdbc:postgresql://{{ postgresql_host }}:{{ postgresql_port }}/{{ postgresql_db_name }}
+
+# 数据目录配置
+sonar.path.data={{ sonarqube_data_dir }}
+sonar.path.temp={{ sonarqube_temp_dir }}
+sonar.path.logs={{ sonarqube_log_dir }}
+
+# Web 日志配置
+sonar.web.logs={{ sonarqube_log_dir }}/web.log
+sonar.web.accessLogs={{ sonarqube_log_dir }}/access.log
+
+# CE 日志配置
+sonar.ce.logs={{ sonarqube_log_dir }}/ce.log
+
+# Elasticsearch 日志配置
+sonar.search.logs={{ sonarqube_log_dir }}/es.log

@@ -1,0 +1,10 @@
+---
+- name: 部署完整的 CI/CD 环境 (ArgoCD + Jenkins + GitLab)
+  hosts: argocd_servers, jenkins_servers, gitlab_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - argocd
+    - jenkins
+    - gitlab

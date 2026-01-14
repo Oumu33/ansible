@@ -1,0 +1,29 @@
+# 通用配置
+ansible_ssh_private_key_file: /opt/ansible/.ssh/ansible_test_key
+
+# 下载目录
+download_dir: /opt/downloads
+install_dir: /opt
+
+# ArgoCD 配置
+argocd_version: v2.10.0
+argocd_download_url: https://github.com/argoproj/argo-cd/releases/download/{{ argocd_version }}/argocd-linux-amd64
+argocd_install_dir: /usr/local/bin
+argocd_server_port: 8080
+argocd_server_ssl_port: 8443
+
+# GitLab 配置
+gitlab_version: 17.5.0
+gitlab_download_url: https://packages.gitlab.com/gitlab/gitlab-ce/packages/el/9/gitlab-ce-{{ gitlab_version }}-ce.0.el9.x86_64.rpm
+gitlab_external_url: http://gitlab-server
+gitlab_root_password: admin123
+
+# Jenkins 配置
+jenkins_version: 2.452.1
+jenkins_download_url: https://get.jenkins.io/war/{{ jenkins_version }}/jenkins.war
+jenkins_install_dir: /opt/jenkins
+jenkins_port: 8080
+jenkins_agent_port: 50000
+jenkins_user: jenkins
+jenkins_group: jenkins
+jenkins_java_opts: "-Xmx1024m -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85"

@@ -1,0 +1,54 @@
+version: '3.8'
+services:
+  # ArgoCD 容器
+  argocd-server:
+    image: rockylinux-java:17
+    container_name: argocd-server
+    hostname: argocd-server
+    privileged: true
+    networks:
+      cicd-net:
+        ipv4_address: 172.130.0.10
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: /usr/sbin/init
+
+  # GitLab 容器
+  gitlab-server:
+    image: rockylinux-java:17
+    container_name: gitlab-server
+    hostname: gitlab-server
+    privileged: true
+    networks:
+      cicd-net:
+        ipv4_address: 172.130.0.20
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2222:22"
+    command: /usr/sbin/init
+
+  # Jenkins 容器
+  jenkins-server:
+    image: rockylinux-java:17
+    container_name: jenkins-server
+    hostname: jenkins-server
+    privileged: true
+    networks:
+      cicd-net:
+        ipv4_address: 172.130.0.30
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    command: /usr/sbin/init
+
+networks:
+  cicd-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.130.0.0/16
+          gateway: 172.130.0.1

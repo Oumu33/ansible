@@ -1,0 +1,20 @@
+all:
+  children:
+    argocd_servers:
+      hosts:
+        argocd-server:
+          ansible_host: 172.130.0.10
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3
+    gitlab_servers:
+      hosts:
+        gitlab-server:
+          ansible_host: 172.130.0.20
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3
+    jenkins_servers:
+      hosts:
+        jenkins-server:
+          ansible_host: 172.130.0.30
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3

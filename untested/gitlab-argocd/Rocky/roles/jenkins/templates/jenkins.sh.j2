@@ -1,0 +1,21 @@
+#!/bin/bash
+# Jenkins 启动脚本
+
+JENKINS_HOME={{ jenkins_home }}
+JENKINS_WAR={{ jenkins_install_dir }}/jenkins.war
+JENKINS_PORT={{ jenkins_port }}
+JENKINS_AGENT_PORT={{ jenkins_agent_port }}
+JAVA_OPTS="{{ jenkins_java_opts }}"
+
+export JENKINS_HOME
+export JAVA_OPTS
+
+echo "Starting Jenkins..."
+echo "JENKINS_HOME: $JENKINS_HOME"
+echo "Port: $JENKINS_PORT"
+echo "Agent Port: $JENKINS_AGENT_PORT"
+
+# 启动 Jenkins
+java $JAVA_OPTS -jar $JENKINS_WAR \
+    --httpPort=$JENKINS_PORT \
+    --agentPort=$JENKINS_AGENT_PORT

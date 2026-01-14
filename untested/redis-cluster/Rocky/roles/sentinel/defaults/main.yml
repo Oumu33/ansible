@@ -1,0 +1,9 @@
+---
+sentinel_port: "{{ sentinel_port }}"
+sentinel_password: "{{ sentinel_password }}"
+sentinel_quorum: "{{ sentinel_quorum }}"
+sentinel_down_after_milliseconds: "{{ sentinel_down_after_milliseconds }}"
+sentinel_failover_timeout: "{{ sentinel_failover_timeout }}"
+redis_master_host: "172.26.0.10"
+redis_master_port: "{{ redis_port }}"
+redis_master_password: "{{ redis_password }}"

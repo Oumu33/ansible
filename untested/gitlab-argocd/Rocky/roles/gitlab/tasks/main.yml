@@ -1,0 +1,147 @@
+---
+- name: 安装 Ansible firewalld 模块依赖
+  ansible.builtin.dnf:
+    name:
+      - python3-firewall
+    state: present
+    update_cache: yes
+  ignore_errors: yes
+
+- name: 安装必要的依赖
+  ansible.builtin.dnf:
+    name:
+      - curl
+      - policycoreutils-python-utils
+      - openssh-server
+      - postfix
+      - wget
+      - vim
+    state: present
+    update_cache: yes
+
+- name: 启动并启用 postfix 服务
+  ansible.builtin.systemd:
+    name: postfix
+    state: started
+    enabled: yes
+
+- name: 确保 firewalld 允许 HTTP 和 HTTPS 端口
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - http
+    - https
+  ignore_errors: yes
+
+- name: 确保 firewalld 允许 SSH 端口
+  ansible.posix.firewalld:
+    port: "2222/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  ignore_errors: yes
+
+- name: 添加 GitLab 官方仓库
+  ansible.builtin.shell: |
+    curl -s https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | bash
+  args:
+    warn: false
+  register: gitlab_repo_add
+  changed_when: gitlab_repo_add.rc == 0
+  failed_when: gitlab_repo_add.rc != 0
+
+- name: 创建下载目录
+  ansible.builtin.file:
+    path: "{{ download_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: 下载 GitLab CE RPM 包
+  ansible.builtin.get_url:
+    url: "{{ gitlab_download_url }}"
+    dest: "{{ download_dir }}/gitlab-ce.rpm"
+    mode: '0644'
+    timeout: 600
+
+- name: 安装 GitLab CE
+  ansible.builtin.dnf:
+    name: "{{ download_dir }}/gitlab-ce.rpm"
+    state: present
+    disable_gpg_check: yes
+
+- name: 配置 GitLab 外部 URL
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: '^external_url'
+    line: "external_url '{{ gitlab_external_url }}'"
+    create: yes
+  notify: 重新配置 GitLab
+
+- name: 配置 GitLab 端口
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: "^nginx\\['listen_port'\\]"
+    line: "nginx['listen_port'] = 80"
+    create: yes
+  notify: 重新配置 GitLab
+
+- name: 配置 GitLab SSH 端口
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: "^gitlab_rails\\['gitlab_shell_ssh_port'\\]"
+    line: "gitlab_rails['gitlab_shell_ssh_port'] = 2222"
+    create: yes
+  notify: 重新配置 GitLab
+
+- name: 配置 GitLab 数据目录
+  ansible.builtin.lineinfile:
+    path: /etc/gitlab/gitlab.rb
+    regexp: '^git_data_dirs'
+    line: |
+      git_data_dirs({
+        "default" => {
+          "path" => "{{ gitlab_data_dir }}/git-data"
+        }
+      })
+    create: yes
+  notify: 重新配置 GitLab
+
+- name: 重新配置 GitLab
+  ansible.builtin.command: gitlab-ctl reconfigure
+  register: gitlab_reconfigure
+  changed_when: gitlab_reconfigure.rc == 0
+  failed_when: gitlab_reconfigure.rc != 0
+  async: 600
+  poll: 10
+
+- name: 启动 GitLab 服务
+  ansible.builtin.systemd:
+    name: gitlab-runsvdir
+    state: started
+    enabled: yes
+
+- name: 等待 GitLab 服务启动
+  ansible.builtin.wait_for:
+    port: 80
+    delay: 30
+    timeout: 300
+
+- name: 获取 GitLab root 密码
+  ansible.builtin.slurp:
+    src: /etc/gitlab/initial_root_password
+  register: gitlab_password
+  ignore_errors: yes
+  failed_when: false
+
+- name: 显示 GitLab 访问信息
+  ansible.builtin.debug:
+    msg:
+      - "GitLab 已成功部署"
+      - "访问地址: {{ gitlab_external_url }}"
+      - "SSH 地址: {{ gitlab_external_url }}:2222"
+      - "默认用户: root"
+      - "初始密码: 请查看 /etc/gitlab/initial_root_password 文件"
+      - "注意: 初始密码文件将在 24 小时后自动删除"

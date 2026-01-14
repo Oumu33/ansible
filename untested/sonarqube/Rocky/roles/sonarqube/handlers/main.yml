@@ -1,0 +1,7 @@
+---
+# SonarQube handlers
+
+- name: 重启 SonarQube 服务
+  systemd:
+    name: sonarqube
+    state: restarted
