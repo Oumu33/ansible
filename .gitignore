@@ -1,0 +1,25 @@
+# 下载的文件和压缩包
+downloads/
+*.tar.gz
+*.tgz
+*.zip
+*.tar.xz
+*.war
+
+# 测试文件
+test-*.sh
+test-*.yml
+
+# 临时文件
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ansible重试文件
+*.retry
