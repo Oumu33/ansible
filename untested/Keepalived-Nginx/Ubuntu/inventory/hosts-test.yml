@@ -1,0 +1,34 @@
+---
+# Keepalived+Nginx 高可用测试主机清单
+
+all:
+  children:
+    nginx:
+      hosts:
+        nginx-1:
+          ansible_host: 172.23.0.10
+          ansible_user: root
+          nginx_port: 80
+          nginx_worker_processes: "auto"
+        nginx-2:
+          ansible_host: 172.23.0.11
+          ansible_user: root
+          nginx_port: 80
+          nginx_worker_processes: "auto"
+
+    keepalived:
+      hosts:
+        keepalived-1:
+          ansible_host: 172.23.0.20
+          ansible_user: root
+          keepalived_state: MASTER
+          keepalived_priority: 100
+          keepalived_vip: 172.23.0.100
+          keepalived_interface: eth0
+        keepalived-2:
+          ansible_host: 172.23.0.21
+          ansible_user: root
+          keepalived_state: BACKUP
+          keepalived_priority: 90
+          keepalived_vip: 172.23.0.100
+          keepalived_interface: eth0

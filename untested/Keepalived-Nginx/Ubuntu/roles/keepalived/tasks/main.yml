@@ -1,0 +1,31 @@
+---
+# Keepalived 安装和配置任务
+
+- name: 安装 Keepalived
+  apt:
+    name: keepalived
+    state: present
+    update_cache: yes
+
+- name: 配置 Keepalived
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload keepalived
+
+- name: 启动并启用 Keepalived 服务
+  systemd:
+    name: keepalived
+    state: started
+    enabled: yes
+
+- name: 等待 VIP 出现
+  when: keepalived_state == "MASTER"
+  wait_for:
+    host: "{{ keepalived_vip }}"
+    port: 80
+    delay: 5
+    timeout: 30

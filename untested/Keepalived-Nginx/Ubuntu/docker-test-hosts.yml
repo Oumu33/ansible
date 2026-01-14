@@ -1,0 +1,68 @@
+version: '3.8'
+
+# Docker Compose 配置用于创建 Keepalived+Nginx 测试主机
+# Nginx 高可用 + Keepalived VIP 漂移
+
+services:
+  # Nginx 节点 1
+  nginx-1:
+    image: rockylinux:9
+    container_name: nginx-ha-1
+    hostname: nginx-1
+    command: tail -f /dev/null
+    networks:
+      nginxnet:
+        ipv4_address: 172.23.0.10
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+
+  # Nginx 节点 2
+  nginx-2:
+    image: rockylinux:9
+    container_name: nginx-ha-2
+    hostname: nginx-2
+    command: tail -f /dev/null
+    networks:
+      nginxnet:
+        ipv4_address: 172.23.0.11
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+
+  # Keepalived 节点 1（主）
+  keepalived-1:
+    image: rockylinux:9
+    container_name: keepalived-ha-1
+    hostname: keepalived-1
+    command: tail -f /dev/null
+    networks:
+      nginxnet:
+        ipv4_address: 172.23.0.20
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+
+  # Keepalived 节点 2（备）
+  keepalived-2:
+    image: rockylinux:9
+    container_name: keepalived-ha-2
+    hostname: keepalived-2
+    command: tail -f /dev/null
+    networks:
+      nginxnet:
+        ipv4_address: 172.23.0.21
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+
+networks:
+  nginxnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24

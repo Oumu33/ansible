@@ -1,0 +1,10 @@
+---
+# Keepalived+Nginx 高可用部署 Playbook
+
+- name: 部署 Nginx 高可用 + Keepalived
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - { role: ../../roles/nginx, when: "'nginx' in group_names" }
+    - { role: ../../roles/keepalived, when: "'keepalived' in group_names" }

@@ -1,0 +1,49 @@
+---
+# Consul 集群全局变量
+
+# 版本
+consul_version: "1.17.1"
+
+# 安装目录
+consul_install_dir: "/opt/consul"
+consul_config_dir: "/etc/consul"
+consul_data_dir: "/var/lib/consul"
+consul_log_dir: "/var/log/consul"
+
+# 系统用户
+consul_user: "consul"
+consul_group: "consul"
+
+# Consul 配置
+consul_datacenter: "dc1"
+consul_domain: "consul"
+consul_encrypt_key: "consul-encryption-key-change-me"
+consul_retry_join: ["172.22.0.70", "172.22.0.71", "172.22.0.72"]
+
+# Server 配置
+consul_server_bootstrap_expect: 3
+consul_server_ui_enabled: true
+consul_server_port: 8500
+consul_server_https_port: 8501
+consul_server_dns_port: 8600
+consul_server_dns_udp_port: 8600
+
+# Client 配置
+consul_client_bind_addr: "0.0.0.0"
+consul_client_advertise_addr: "{{ ansible_host }}"
+
+# 集群配置
+consul_leave_on_terminate: true
+consul_skip_leave_on_interrupt: false
+
+# ACL 配置
+consul_acl_enabled: true
+consul_acl_default_policy: "deny"
+consul_acl_enable_token_persistence: true
+
+# 下载超时 (秒)
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

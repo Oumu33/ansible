@@ -1,0 +1,22 @@
+---
+# Keepalived+Nginx 高可用全局配置变量
+
+# Nginx 配置
+nginx_version: "1.24"
+nginx_port: 80
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+
+# Keepalived 配置
+keepalived_version: "2.2"
+keepalived_vip: 172.23.0.100
+keepalived_vrid: 52
+keepalived_auth_pass: "keepalived123"
+keepalived_check_interval: 2
+keepalived_interface: eth0
+
+# 健康检查配置
+health_check_interval: 2
+health_check_timeout: 5
+health_check_rise: 2
+health_check_fall: 3

@@ -1,0 +1,41 @@
+! Configuration File for keepalived
+
+global_defs {
+    router_id {{ inventory_hostname }}
+    script_user root
+    enable_script_security
+}
+
+vrrp_script check_nginx {
+    script "/usr/bin/curl -f http://127.0.0.1:80/health || exit 1"
+    interval {{ health_check_interval }}
+    timeout {{ health_check_timeout }}
+    rise {{ health_check_rise }}
+    fall {{ health_check_fall }}
+    weight -2
+}
+
+vrrp_instance VI_{{ keepalived_vrid }} {
+    state {{ keepalived_state }}
+    interface {{ keepalived_interface }}
+    virtual_router_id {{ keepalived_vrid }}
+    priority {{ keepalived_priority }}
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass }}
+    }
+
+    virtual_ipaddress {
+        {{ keepalived_vip }}
+    }
+
+    track_script {
+        check_nginx
+    }
+
+    notify_master "/usr/bin/systemctl restart nginx"
+    notify_backup "/usr/bin/systemctl restart nginx"
+    notify_fault "/usr/bin/systemctl stop nginx"
+}

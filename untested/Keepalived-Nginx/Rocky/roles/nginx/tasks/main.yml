@@ -1,0 +1,35 @@
+---
+# Nginx 安装和配置任务
+
+- name: 安装 Nginx
+  dnf:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: 创建健康检查页面
+  copy:
+    dest: /var/www/html/health
+    content: |
+      <html>
+      <head><title>Health Check</title></head>
+      <body>
+      <h1>OK</h1>
+      <p>Server: {{ inventory_hostname }}</p>
+      </body>
+      </html>
+
+- name: 配置 Nginx 主配置文件
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload nginx
+
+- name: 启动并启用 Nginx 服务
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
