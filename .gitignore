@@ -23,3 +23,10 @@ __pycache__/
 
 # Ansible重试文件
 *.retry
+
+# SSH密钥
+.ssh/
+id_rsa
+id_rsa.pub
+*key
+*key.pub
