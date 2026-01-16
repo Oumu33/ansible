@@ -477,6 +477,74 @@ vmselect_cache_size_bytes: "2GB"
 vmstorage_memory_allowed_bytes: "4GB"
 ```
 
+## 硬件资源分配建议
+
+### 资源需求对比
+
+| 组件 | CPU | 内存 | 磁盘 | 原因 |
+|------|-----|------|------|------|
+| **vmstorage** | 高 | 高 | SSD | 数据压缩/解压缩、缓存、磁盘I/O密集 |
+| **vminsert** | 中 | 低 | 低 | 只是转发写入，计算量小 |
+| **vmselect** | 中 | 中 | 低 | 需要缓存查询结果，但计算量中等 |
+
+### 为什么 vmstorage 需要高性能？
+
+**1. 磁盘 I/O 密集**
+- 所有数据都写入磁盘
+- 查询时需要从磁盘读取大量数据
+- 需要高性能 SSD（NVMe 更好）
+
+**2. CPU 密集**
+- 数据压缩（写入时）
+- 数据解压缩（查询时）
+- 时序数据的索引计算
+
+**3. 内存密集**
+- 缓存热点数据，提高查询性能
+- 内存缓冲区，减少磁盘写入
+
+### vminsert/vmselect 资源需求较低的原因
+
+**vminsert**：
+- 只是接收请求 → 转发给 vmstorage
+- 不做复杂计算
+- 不存储数据
+
+**vmselect**：
+- 从 vmstorage 读取数据 → 汇总返回
+- 需要一定内存做缓存
+- 但计算量比 vmstorage 小
+
+### 推荐配置
+
+#### 小规模部署（< 1000 个指标）
+```
+vmstorage: 4核CPU + 8GB内存 + SSD
+vminsert:  2核CPU + 2GB内存  + 普通磁盘
+vmselect:  2核CPU + 4GB内存  + 普通磁盘
+```
+
+#### 中规模部署（1000-10000 个指标）
+```
+vmstorage: 8核CPU + 16GB内存 + NVMe SSD
+vminsert:  4核CPU + 4GB内存  + 普通磁盘
+vmselect:  4核CPU + 8GB内存  + 普通磁盘
+```
+
+#### 大规模部署（> 10000 个指标）
+```
+vmstorage: 16核CPU + 32GB内存 + NVMe SSD
+vminsert:  8核CPU + 8GB内存   + 普通磁盘
+vmselect:  8核CPU + 16GB内存  + 普通磁盘
+```
+
+### 调优建议
+
+1. **vmstorage 优先级最高**：如果资源有限，优先保证 vmstorage 的性能
+2. **使用 SSD**：vmstorage 必须使用 SSD，否则性能会严重下降
+3. **监控资源使用**：定期监控 CPU、内存、磁盘 I/O 使用情况
+4. **水平扩展**：如果单节点性能不足，可以增加 vminsert/vmselect 节点数量
+
 ## 版本信息
 
 当前版本：
