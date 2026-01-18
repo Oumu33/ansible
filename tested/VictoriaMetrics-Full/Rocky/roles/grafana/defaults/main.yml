@@ -4,3 +4,57 @@ grafana_config_path: "{{ vm_config_dir }}/grafana"
 grafana_data_path: "{{ vm_data_dir }}/grafana"
 grafana_log_path: "{{ vm_log_dir }}/grafana"
 grafana_plugins_dir: "/var/lib/grafana/plugins"
+
+# Grafana 服务器配置
+grafana_http_addr: "0.0.0.0"
+grafana_port: 3000
+grafana_domain: ""
+grafana_root_url: ""
+
+# Grafana 安全配置
+grafana_admin_user: "admin"
+grafana_admin_password: "admin"
+grafana_secret_key: "SW2YcwTIb9zpOOhoPsMm"
+grafana_disable_gravatar: false
+
+# Grafana 数据库配置
+grafana_db_type: "sqlite3"
+grafana_db_path: "{{ grafana_data_path }}/grafana.db"
+
+# Grafana 会话配置
+grafana_session_provider: "file"
+grafana_session_provider_config: "sessions"
+
+# Grafana 日志配置
+grafana_log_mode: "console"
+grafana_log_level: "info"
+
+# Grafana 用户配置
+grafana_users_viewers_can_edit: false
+grafana_users_allow_sign_up: false
+grafana_users_allow_org_create: false
+grafana_users_auto_assign_org: true
+grafana_users_auto_assign_org_role: "Viewer"
+
+# Grafana 匿名访问配置
+grafana_anonymous_enabled: false
+
+# Grafana 告警配置
+grafana_alerting_enabled: true
+grafana_alerting_execution_timeout: "30s"
+
+# Grafana 插件配置
+grafana_plugins_enable_alpha: false
+grafana_plugins_app_tls_skip_verify: false
+
+# 是否启用仪表板provisioning
+grafana_enable_dashboard_provisioning: true
+
+# 地图配置
+grafana_map_provider: "amap"  # amap高德地图, osm OpenStreetMap
+grafana_amap_api_key: ""  # 高德地图API Key（需要申请）
+grafana_amap_style: "normal"  # 地图样式：normal, satellite, dark
+
+# GeoIP配置（用于日志地理位置分析）
+grafana_geoip_enabled: false
+grafana_geoip_database_path: "/etc/grafana/GeoLite2-City.mmdb"

@@ -2,3 +2,5 @@
 vmalert_binary_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ victoriametrics_version }}/vmalert-{{ victoriametrics_version }}-linux-amd64.tar.gz"
 vmalert_config_path: "{{ vm_config_dir }}/vmalert/alerts.yml"
 vmalert_log_path: "{{ vm_log_dir }}/vmalert"
+vmalert_rules_dir: "{{ vm_install_dir }}/rules"
+vmalert_evaluation_interval: "30s"

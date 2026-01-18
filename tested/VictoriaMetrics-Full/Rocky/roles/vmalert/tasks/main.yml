@@ -27,6 +27,7 @@
   loop:
     - "{{ vmalert_config_path | dirname }}"
     - "{{ vmalert_log_path }}"
+    - "{{ vmalert_rules_dir }}"
   become: true
 
 - name: 从控制节点复制 vmutils
@@ -45,22 +46,768 @@
     group: "{{ vm_user }}"
   become: true
 
-- name: 生成 vmalert 告警规则文件
+- name: 生成 system_resources.yml 告警规则文件
   ansible.builtin.copy:
-    dest: "{{ vmalert_config_path }}"
+    dest: "{{ vmalert_rules_dir }}/system_resources.yml"
     content: |
+      # ============================================
+      # 系统资源监控告警规则
+      # ============================================
+      # 说明：监控物理服务器的CPU、内存、磁盘、网络、负载等资源使用情况
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
       groups:
-        - name: system
+        - name: system_resources
           interval: 30s
           rules:
+            # ============================================
+            # CPU使用率告警
+            # ============================================
+            # 说明：监控CPU使用率，当使用率超过阈值时触发告警
+            # 指标来源：node_exporter
+            # 计算方式：100 - (idle模式CPU占比 * 100)
+
             - alert: HighCPUUsage
+              # 警告级别：CPU使用率超过80%持续5分钟
+              expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器CPU使用率过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的CPU使用率为 {{ $value | humanizePercentage }}，已持续超过5分钟，请检查是否有高负载进程"
+
+            - alert: CriticalCPUUsage
+              # 严重级别：CPU使用率超过90%持续2分钟
+              expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+              for: 2m
+              labels:
+                severity: critical
+                category: resource
+              annotations:
+                summary: "服务器CPU使用率严重过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的CPU使用率为 {{ $value | humanizePercentage }}，已持续超过2分钟，需要立即处理！"
+
+            # ============================================
+            # 内存使用率告警
+            # ============================================
+            # 说明：监控内存使用率，当使用率超过阈值时触发告警
+            # 指标来源：node_exporter
+            # 计算方式：(总内存 - 可用内存) / 总内存 * 100
+
+            - alert: HighMemoryUsage
+              # 警告级别：内存使用率超过80%持续5分钟
+              expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器内存使用率过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的内存使用率为 {{ $value | humanizePercentage }}，可用内存为 {{ $value | humanize1024 }}B"
+
+            - alert: CriticalMemoryUsage
+              # 严重级别：内存使用率超过90%持续2分钟
+              expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+              for: 2m
+              labels:
+                severity: critical
+                category: resource
+              annotations:
+                summary: "服务器内存使用率严重过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的内存使用率为 {{ $value | humanizePercentage }}，系统可能面临OOM风险，需要立即处理！"
+
+            # ============================================
+            # 磁盘空间告警
+            # ============================================
+            # 说明：监控磁盘空间使用率，当使用率超过阈值时触发告警
+            # 指标来源：node_exporter
+            # 过滤条件：排除tmpfs和fuse.lxcfs等临时文件系统
+
+            - alert: HighDiskUsage
+              # 警告级别：磁盘使用率超过80%持续5分钟
+              expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"})) * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器磁盘空间不足 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的挂载点 {{ $labels.mountpoint }} 使用率为 {{ $value | humanizePercentage }}，可用空间为 {{ $value | humanize1024 }}B，请及时清理或扩容"
+
+            - alert: CriticalDiskUsage
+              # 严重级别：磁盘使用率超过90%持续2分钟
+              expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"})) * 100 > 90
+              for: 2m
+              labels:
+                severity: critical
+                category: resource
+              annotations:
+                summary: "服务器磁盘空间严重不足 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的挂载点 {{ $labels.mountpoint }} 使用率为 {{ $value | humanizePercentage }}，系统可能无法写入数据，需要立即处理！"
+
+            # ============================================
+            # 磁盘I/O告警
+            # ============================================
+            # 说明：监控磁盘I/O等待时间，当I/O等待时间过高时触发告警
+            # 指标来源：node_exporter
+            # 说明：iowait表示CPU等待I/O完成的时间占比
+
+            - alert: HighDiskIOWait
+              # 警告级别：I/O等待时间超过20%持续5分钟
+              expr: rate(node_cpu_seconds_total{mode="iowait"}[5m]) * 100 > 20
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器磁盘I/O等待时间过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的I/O等待时间为 {{ $value | humanizePercentage }}，磁盘性能可能成为瓶颈，请检查磁盘健康状态"
+
+            # ============================================
+            # 网络流量告警
+            # ============================================
+            # 说明：监控网络流量，当流量超过阈值时触发告警
+            # 指标来源：node_exporter
+            # 阈值：100MB/s
+
+            - alert: HighNetworkIn
+              # 警告级别：入站流量超过100MB/s持续5分钟
+              expr: rate(node_network_receive_bytes_total{device!="lo"}[5m]) > 100 * 1024 * 1024
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器入站网络流量过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的网卡 {{ $labels.device }} 入站流量为 {{ $value | humanize }}B/s，请检查是否有异常流量"
+
+            - alert: HighNetworkOut
+              # 警告级别：出站流量超过100MB/s持续5分钟
+              expr: rate(node_network_transmit_bytes_total{device!="lo"}[5m]) > 100 * 1024 * 1024
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器出站网络流量过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的网卡 {{ $labels.device }} 出站流量为 {{ $value | humanize }}B/s，请检查是否有异常流量"
+
+            # ============================================
+            # 系统负载告警
+            # ============================================
+            # 说明：监控系统负载，当负载超过CPU核心数的2倍时触发告警
+            # 指标来源：node_exporter
+            # 说明：load1表示1分钟平均负载
+
+            - alert: HighLoad1
+              # 警告级别：1分钟平均负载超过CPU核心数的2倍持续5分钟
+              expr: node_load1 > (count by (instance) (node_cpu_seconds_total{mode="idle"})) * 2
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器1分钟平均负载过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的1分钟平均负载为 {{ $value }}，CPU核心数为 {{ $labels.instance }}，负载较高"
+
+            - alert: HighLoad5
+              # 警告级别：5分钟平均负载超过CPU核心数的2倍持续10分钟
+              expr: node_load5 > (count by (instance) (node_cpu_seconds_total{mode="idle"})) * 2
+              for: 10m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "服务器5分钟平均负载过高 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的5分钟平均负载为 {{ $value }}，CPU核心数为 {{ $labels.instance }}，负载持续较高，请检查系统性能"
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmalert
+
+- name: 生成 service_availability.yml 告警规则文件
+  ansible.builtin.copy:
+    dest: "{{ vmalert_rules_dir }}/service_availability.yml"
+    content: |
+      # ============================================
+      # 服务可用性监控告警规则
+      # ============================================
+      # 说明：监控主机和服务可用性，包括主机宕机、SSH服务、时间同步等
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      groups:
+        - name: service_availability
+          interval: 30s
+          rules:
+            # ============================================
+            # 主机可用性告警
+            # ============================================
+            # 说明：监控主机是否在线，当主机宕机时触发告警
+            # 指标来源：vmagent的up指标
+            # 说明：up=0表示目标主机不可达
+
+            - alert: HostDown
+              # 严重级别：主机宕机持续2分钟
               expr: up == 0
+              for: 2m
+              labels:
+                severity: critical
+                category: availability
+              annotations:
+                summary: "主机宕机 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 已宕机，无法连接，请立即检查主机状态和网络连接！"
+
+            # ============================================
+            # SSH服务告警
+            # ============================================
+            # 说明：监控SSH服务是否可用，当SSH连接数异常时触发告警
+            # 指标来源：node_exporter
+            # 说明：TCP连接状态为established，端口为22
+
+            - alert: SSHDown
+              # 严重级别：SSH连接数为0持续5分钟
+              expr: node_tcp_connections{state="established", port="22"} == 0
               for: 5m
               labels:
                 severity: critical
+                category: availability
               annotations:
-                summary: "Service is down"
-                description: "Service has been down for more than 5 minutes"
+                summary: "SSH服务不可用 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的SSH服务不可用，无法建立SSH连接，请检查SSH服务状态！"
+
+            # ============================================
+            # 系统时间同步告警
+            # ============================================
+            # 说明：监控系统时间同步状态，当时钟偏移过大时触发告警
+            # 指标来源：node_exporter
+            # 说明：node_timex_offset_seconds表示时钟偏移量（秒）
+
+            - alert: ClockSkew
+              # 警告级别：时钟偏移超过0.1秒持续5分钟
+              expr: abs(node_timex_offset_seconds) > 0.1
+              for: 5m
+              labels:
+                severity: warning
+                category: availability
+              annotations:
+                summary: "系统时间同步异常 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的系统时间偏移量为 {{ $value }}秒，时间同步可能存在问题，请检查NTP服务！"
+
+            - alert: CriticalClockSkew
+              # 严重级别：时钟偏移超过1秒持续2分钟
+              expr: abs(node_timex_offset_seconds) > 1
+              for: 2m
+              labels:
+                severity: critical
+                category: availability
+              annotations:
+                summary: "系统时间同步严重异常 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 的系统时间偏移量为 {{ $value }}秒，时间同步严重异常，可能导致日志和监控数据时间不准确！"
+
+            # ============================================
+            # 系统重启告警
+            # ============================================
+            # 说明：监控系统重启事件，当系统重启时触发告警
+            # 指标来源：node_exporter
+            # 说明：node_time_seconds表示系统启动时间戳
+
+            - alert: SystemReboot
+              # 信息级别：系统重启时间小于10分钟
+              expr: time() - node_time_seconds < 600
+              for: 1m
+              labels:
+                severity: info
+                category: availability
+              annotations:
+                summary: "系统重启 - {{ $labels.instance }}"
+                description: "主机 {{ $labels.instance }} 在最近10分钟内重启了，请确认重启原因！"
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmalert
+
+- name: 生成 snmp_switch_ports.yml 告警规则文件
+  ansible.builtin.copy:
+    dest: "{{ vmalert_rules_dir }}/snmp_switch_ports.yml"
+    content: |
+      # ============================================
+      # SNMP交换机端口监控告警规则
+      # ============================================
+      # 说明：监控交换机端口状态、错误率、丢包率、带宽利用率等
+      # 指标来源：SNMP exporter
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      groups:
+        - name: snmp_switch_ports
+          interval: 30s
+          rules:
+            # ============================================
+            # 端口状态告警
+            # ============================================
+            # 说明：监控交换机端口状态，当端口down时触发告警
+            # 指标来源：SNMP exporter (IF-MIB)
+            # 说明：ifOperStatus=1表示up，=2表示down
+
+            - alert: SwitchPortDown
+              # 警告级别：端口down持续2分钟
+              expr: ifOperStatus{ifOperStatus!="up"} == 2
+              for: 2m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机端口宕机 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} ({{ $labels.ifDescr }}) 已宕机，请检查物理连接和端口配置！"
+
+            # ============================================
+            # 端口错误率告警
+            # ============================================
+            # 说明：监控端口错误率，当错误率过高时触发告警
+            # 指标来源：SNMP exporter (IF-MIB)
+            # 说明：ifInErrors和ifOutErrors表示端口入站和出站错误计数
+
+            - alert: HighPortErrorRate
+              # 警告级别：端口错误率超过10个/秒持续5分钟
+              expr: rate(ifInErrors[5m]) > 10 or rate(ifOutErrors[5m]) > 10
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机端口错误率过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 错误率为 {{ $value }} errors/s，请检查链路质量！"
+
+            - alert: CriticalPortErrorRate
+              # 严重级别：端口错误率超过50个/秒持续2分钟
+              expr: rate(ifInErrors[5m]) > 50 or rate(ifOutErrors[5m]) > 50
+              for: 2m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机端口错误率严重过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 错误率为 {{ $value }} errors/s，链路质量严重下降！"
+
+            # ============================================
+            # 端口丢包率告警
+            # ============================================
+            # 说明：监控端口丢包率，当丢包率过高时触发告警
+            # 指标来源：SNMP exporter (IF-MIB)
+            # 说明：ifInDiscards和ifOutDiscards表示端口入站和出站丢弃计数
+
+            - alert: HighPortDiscardRate
+              # 警告级别：端口丢包率超过10个/秒持续5分钟
+              expr: rate(ifInDiscards[5m]) > 10 or rate(ifOutDiscards[5m]) > 10
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机端口丢包率过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 丢包率为 {{ $value }} packets/s，请检查端口配置和流量！"
+
+            - alert: CriticalPortDiscardRate
+              # 严重级别：端口丢包率超过50个/秒持续2分钟
+              expr: rate(ifInDiscards[5m]) > 50 or rate(ifOutDiscards[5m]) > 50
+              for: 2m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机端口丢包率严重过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 丢包率为 {{ $value }} packets/s，严重丢包！"
+
+            # ============================================
+            # 端口带宽利用率告警
+            # ============================================
+            # 说明：监控端口带宽利用率，当利用率过高时触发告警
+            # 指标来源：SNMP exporter (IF-MIB)
+            # 说明：ifHCInOctets和ifHighSpeed分别表示64位入站字节数和端口速率
+
+            - alert: HighPortUsage
+              # 警告级别：端口带宽利用率超过80%持续5分钟
+              expr: (rate(ifHCInOctets[5m]) * 8 / ifHighSpeed) * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机端口带宽利用率过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 带宽利用率为 {{ $value | humanizePercentage }}，建议扩容或优化流量！"
+
+            - alert: CriticalPortUsage
+              # 严重级别：端口带宽利用率超过90%持续2分钟
+              expr: (rate(ifHCInOctets[5m]) * 8 / ifHighSpeed) * 100 > 90
+              for: 2m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机端口带宽利用率严重过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 带宽利用率为 {{ $value | humanizePercentage }}，端口接近饱和！"
+
+            # ============================================
+            # 端口广播风暴告警
+            # ============================================
+            # 说明：监控端口广播流量，当广播流量异常时触发告警
+            # 指标来源：SNMP exporter (IF-MIB)
+            # 说明：ifHCInBroadcastPkts表示入站广播包计数
+
+            - alert: HighBroadcastTraffic
+              # 警告级别：端口广播流量超过1000个/秒持续5分钟
+              expr: rate(ifHCInBroadcastPkts[5m]) > 1000
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机端口广播流量异常 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的端口 {{ $labels.ifName }} 广播流量为 {{ $value }} packets/s，可能存在广播风暴！"
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmalert
+
+- name: 生成 snmp_switch_device.yml 告警规则文件
+  ansible.builtin.copy:
+    dest: "{{ vmalert_rules_dir }}/snmp_switch_device.yml"
+    content: |
+      # ============================================
+      # SNMP交换机设备监控告警规则
+      # ============================================
+      # 说明：监控交换机设备级别的CPU、内存、温度、电源、风扇等
+      # 指标来源：SNMP exporter
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      groups:
+        - name: snmp_switch_device
+          interval: 30s
+          rules:
+            # ============================================
+            # 交换机CPU使用率告警
+            # ============================================
+            # 说明：监控交换机CPU使用率，当使用率过高时触发告警
+            # 指标来源：SNMP exporter (CISCO-PROCESS-MIB)
+            # 说明：cpmCPUTotal5minRev表示5分钟平均CPU利用率
+
+            - alert: SwitchHighCPU
+              # 警告级别：CPU使用率超过80%持续5分钟
+              expr: (100 - (cpmCPUTotal5minRev * 100)) > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机CPU使用率过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的CPU使用率为 {{ $value | humanizePercentage }}，请检查是否有异常流量或进程！"
+
+            - alert: SwitchCriticalCPU
+              # 严重级别：CPU使用率超过90%持续2分钟
+              expr: (100 - (cpmCPUTotal5minRev * 100)) > 90
+              for: 2m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机CPU使用率严重过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的CPU使用率为 {{ $value | humanizePercentage }}，设备可能无法正常工作！"
+
+            # ============================================
+            # 交换机内存使用率告警
+            # ============================================
+            # 说明：监控交换机内存使用率，当使用率过高时触发告警
+            # 指标来源：SNMP exporter (CISCO-MEMORY-POOL-MIB)
+            # 说明：ciscoMemoryPoolUsed和ciscoMemoryPoolFree分别表示已用和空闲内存
+
+            - alert: SwitchHighMemory
+              # 警告级别：内存使用率超过80%持续5分钟
+              expr: (ciscoMemoryPoolUsed / (ciscoMemoryPoolUsed + ciscoMemoryPoolFree)) * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机内存使用率过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的内存使用率为 {{ $value | humanizePercentage }}，请检查内存使用情况！"
+
+            - alert: SwitchCriticalMemory
+              # 严重级别：内存使用率超过90%持续2分钟
+              expr: (ciscoMemoryPoolUsed / (ciscoMemoryPoolUsed + ciscoMemoryPoolFree)) * 100 > 90
+              for: 2m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机内存使用率严重过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的内存使用率为 {{ $value | humanizePercentage }}，设备可能无法正常工作！"
+
+            # ============================================
+            # 交换机温度告警
+            # ============================================
+            # 说明：监控交换机温度，当温度过高时触发告警
+            # 指标来源：SNMP exporter (ENTITY-SENSOR-MIB)
+            # 说明：entPhySensorValue表示传感器读数，entPhySensorType表示传感器类型
+
+            - alert: SwitchHighTemperature
+              # 警告级别：温度超过60°C持续5分钟
+              expr: entPhySensorValue{entPhySensorType="temperature"} > 60
+              for: 5m
+              labels:
+                severity: warning
+                category: network
+              annotations:
+                summary: "交换机温度过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的传感器 {{ $labels.entPhySensorName }} 温度为 {{ $value }}°C，请检查散热系统！"
+
+            - alert: SwitchCriticalTemperature
+              # 严重级别：温度超过70°C持续2分钟
+              expr: entPhySensorValue{entPhySensorType="temperature"} > 70
+              for: 2m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机温度严重过高 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的传感器 {{ $labels.entPhySensorName }} 温度为 {{ $value }}°C，设备可能因过热而损坏！"
+
+            # ============================================
+            # 交换机电源告警
+            # ============================================
+            # 说明：监控交换机电源状态，当电源故障时触发告警
+            # 指标来源：SNMP exporter (CISCO-ENV-MON-MIB)
+            # 说明：ciscoEnvMonSupplyState表示电源状态，=2表示正常
+
+            - alert: SwitchPowerSupplyDown
+              # 严重级别：电源状态异常持续1分钟
+              expr: ciscoEnvMonSupplyState != 2
+              for: 1m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机电源异常 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的电源 {{ $labels.ciscoEnvMonSupplyDescr }} 状态异常，请立即检查！"
+
+            # ============================================
+            # 交换机风扇告警
+            # ============================================
+            # 说明：监控交换机风扇状态，当风扇故障时触发告警
+            # 指标来源：SNMP exporter (CISCO-ENV-MON-MIB)
+            # 说明：ciscoEnvMonFanState表示风扇状态，=2表示正常
+
+            - alert: SwitchFanDown
+              # 严重级别：风扇状态异常持续1分钟
+              expr: ciscoEnvMonFanState != 2
+              for: 1m
+              labels:
+                severity: critical
+                category: network
+              annotations:
+                summary: "交换机风扇异常 - {{ $labels.instance }}"
+                description: "交换机 {{ $labels.instance }} 的风扇 {{ $labels.ciscoEnvMonFanDescr }} 状态异常，请立即检查！"
+    owner: "{{ vm_user }}"
+    group: "{{ vm_user }}"
+    mode: '0644'
+  become: true
+  notify: restart vmalert
+
+- name: 生成 victoria_metrics.yml 告警规则文件
+  ansible.builtin.copy:
+    dest: "{{ vmalert_rules_dir }}/victoria_metrics.yml"
+    content: |
+      # ============================================
+      # VictoriaMetrics自身监控告警规则
+      # ============================================
+      # 说明：监控VictoriaMetrics集群各组件的健康状态和性能指标
+      # 指标来源：VictoriaMetrics内置指标
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      groups:
+        - name: victoria_metrics
+          interval: 30s
+          rules:
+            # ============================================
+            # vmstorage健康检查
+            # ============================================
+            # 说明：监控vmstorage节点是否正常运行
+            # 指标来源：vmstorage内置指标
+            # 说明：up=1表示服务正常，=0表示服务异常
+
+            - alert: VMStorageDown
+              # 严重级别：vmstorage节点宕机持续2分钟
+              expr: up{job="vmstorage"} == 0
+              for: 2m
+              labels:
+                severity: critical
+                category: infrastructure
+              annotations:
+                summary: "vmstorage节点宕机 - {{ $labels.instance }}"
+                description: "vmstorage节点 {{ $labels.instance }} 已宕机，数据写入和查询可能受影响，请立即检查！"
+
+            # ============================================
+            # vminsert健康检查
+            # ============================================
+            # 说明：监控vminsert节点是否正常运行
+            # 指标来源：vminsert内置指标
+
+            - alert: VMInsertDown
+              # 严重级别：vminsert节点宕机持续2分钟
+              expr: up{job="vminsert"} == 0
+              for: 2m
+              labels:
+                severity: critical
+                category: infrastructure
+              annotations:
+                summary: "vminsert节点宕机 - {{ $labels.instance }}"
+                description: "vminsert节点 {{ $labels.instance }} 已宕机，数据写入可能受影响，请立即检查！"
+
+            # ============================================
+            # vmselect健康检查
+            # ============================================
+            # 说明：监控vmselect节点是否正常运行
+            # 指标来源：vmselect内置指标
+
+            - alert: VMSelectDown
+              # 严重级别：vmselect节点宕机持续2分钟
+              expr: up{job="vmselect"} == 0
+              for: 2m
+              labels:
+                severity: critical
+                category: infrastructure
+              annotations:
+                summary: "vmselect节点宕机 - {{ $labels.instance }}"
+                description: "vmselect节点 {{ $labels.instance }} 已宕机，数据查询可能受影响，请立即检查！"
+
+            # ============================================
+            # vmauth健康检查
+            # ============================================
+            # 说明：监控vmauth节点是否正常运行
+            # 指标来源：vmauth内置指标
+
+            - alert: VMAuthDown
+              # 严重级别：vmauth节点宕机持续2分钟
+              expr: up{job="vmauth"} == 0
+              for: 2m
+              labels:
+                severity: critical
+                category: infrastructure
+              annotations:
+                summary: "vmauth节点宕机 - {{ $labels.instance }}"
+                description: "vmauth节点 {{ $labels.instance }} 已宕机，认证和负载均衡功能失效，请立即检查！"
+
+            # ============================================
+            # vmalert健康检查
+            # ============================================
+            # 说明：监控vmalert节点是否正常运行
+            # 指标来源：vmalert内置指标
+
+            - alert: VMAlertDown
+              # 严重级别：vmalert节点宕机持续2分钟
+              expr: up{job="vmalert"} == 0
+              for: 2m
+              labels:
+                severity: critical
+                category: infrastructure
+              annotations:
+                summary: "vmalert节点宕机 - {{ $labels.instance }}"
+                description: "vmalert节点 {{ $labels.instance }} 已宕机，告警规则评估功能失效，请立即检查！"
+
+            # ============================================
+            # vmagent健康检查
+            # ============================================
+            # 说明：监控vmagent节点是否正常运行
+            # 指标来源：vmagent内置指标
+
+            - alert: VMAgentDown
+              # 警告级别：vmagent节点宕机持续5分钟
+              expr: up{job="vmagent"} == 0
+              for: 5m
+              labels:
+                severity: warning
+                category: infrastructure
+              annotations:
+                summary: "vmagent节点宕机 - {{ $labels.instance }}"
+                description: "vmagent节点 {{ $labels.instance }} 已宕机，指标采集功能失效，请检查！"
+
+            # ============================================
+            # 写入速率异常告警
+            # ============================================
+            # 说明：监控vminsert的写入速率，当写入速率异常降低时触发告警
+            # 指标来源：vminsert内置指标
+            # 说明：vm_slow_row_inserts_total表示慢插入计数
+
+            - alert: HighSlowInsertRate
+              # 警警告警：慢插入速率超过100个/秒持续5分钟
+              expr: rate(vm_slow_row_inserts_total[5m]) > 100
+              for: 5m
+              labels:
+                severity: warning
+                category: performance
+              annotations:
+                summary: "vminsert慢插入速率过高 - {{ $labels.instance }}"
+                description: "vminsert节点 {{ $labels.instance }} 的慢插入速率为 {{ $value }} rows/s，写入性能可能存在问题！"
+
+            # ============================================
+            # 查询延迟告警
+            # ============================================
+            # 说明：监控vmselect的查询延迟，当查询延迟过高时触发告警
+            # 指标来源：vmselect内置指标
+            # 说明：vm_request_duration_seconds表示请求持续时间
+
+            - alert: HighQueryLatency
+              # 警告级别：查询延迟超过5秒持续5分钟
+              expr: histogram_quantile(0.99, rate(vm_request_duration_seconds_bucket[5m])) > 5
+              for: 5m
+              labels:
+                severity: warning
+                category: performance
+              annotations:
+                summary: "vmselect查询延迟过高 - {{ $labels.instance }}"
+                description: "vmselect节点 {{ $labels.instance }} 的P99查询延迟为 {{ $value }}s，查询性能可能存在问题！"
+
+            - alert: CriticalQueryLatency
+              # 严重级别：查询延迟超过10秒持续2分钟
+              expr: histogram_quantile(0.99, rate(vm_request_duration_seconds_bucket[5m])) > 10
+              for: 2m
+              labels:
+                severity: critical
+                category: performance
+              annotations:
+                summary: "vmselect查询延迟严重过高 - {{ $labels.instance }}"
+                description: "vmselect节点 {{ $labels.instance }} 的P99查询延迟为 {{ $value }}s，查询性能严重下降！"
+
+            # ============================================
+            # 磁盘空间告警
+            # ============================================
+            # 说明：监控vmstorage的磁盘空间使用情况
+            # 指标来源：vmstorage内置指标
+            # 说明：vm_data_size_bytes表示数据大小，vm_cache_size_bytes表示缓存大小
+
+            - alert: VMStorageHighDiskUsage
+              # 警告级别：磁盘使用率超过80%持续5分钟
+              expr: (vm_data_size_bytes + vm_cache_size_bytes) / node_filesystem_size_bytes{mountpoint="/var/lib/victoriametrics"} * 100 > 80
+              for: 5m
+              labels:
+                severity: warning
+                category: resource
+              annotations:
+                summary: "vmstorage磁盘使用率过高 - {{ $labels.instance }}"
+                description: "vmstorage节点 {{ $labels.instance }} 的磁盘使用率为 {{ $value | humanizePercentage }}，请及时清理或扩容！"
     owner: "{{ vm_user }}"
     group: "{{ vm_user }}"
     mode: '0644'
@@ -82,7 +829,8 @@
       WorkingDirectory={{ vm_install_dir }}
       ExecStart={{ vm_install_dir }}/vmalert-prod \
         -httpListenAddr=:{{ vmalert_port }} \
-        -rule={{ vmalert_config_path }} \
+        -rule={{ vmalert_rules_dir }}/*.yml \
+        -evaluationInterval={{ vmalert_evaluation_interval }} \
         -notifier.url={{ vmalert_notifier_url }} \
         -datasource.url={{ vmalert_datasource_url }} \
         -loggerOutput=stdout \

@@ -5,6 +5,6 @@ vminsert_log_path: "{{ vm_log_dir }}/vminsert"
 
 # vminsert 集群配置
 vminsert_storage_nodes:
-  - "http://172.22.0.10:8400"
-  - "http://172.22.0.11:8400"
-  - "http://172.22.0.12:8400"
+  - "http://{{ vmstorage_1_ip }}:{{ vmstorage_vminsert_port }}"
+  - "http://{{ vmstorage_2_ip }}:{{ vmstorage_vminsert_port }}"
+  - "http://{{ vmstorage_3_ip }}:{{ vmstorage_vminsert_port }}"

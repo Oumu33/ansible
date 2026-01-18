@@ -44,27 +44,178 @@
   ansible.builtin.copy:
     dest: "{{ grafana_config_path }}/grafana.ini"
     content: |
+      # ============================================
+      # Grafana 配置文件
+      # ============================================
+      # 说明：Grafana服务器配置
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      # ============================================
+      # 服务器配置
+      # ============================================
+
       [server]
+      # 监听地址
       http_addr = {{ grafana_http_addr }}
+      # 监听端口
       http_port = {{ grafana_port }}
+      # 域名
+      domain = {{ grafana_domain }}
+      # 根URL
+      root_url = {{ grafana_root_url }}
+      # 启用Gzip压缩
+      enable_gzip = true
+
+      # ============================================
+      # 安全配置
+      # ============================================
 
       [security]
+      # 管理员用户名
       admin_user = {{ grafana_admin_user }}
+      # 管理员密码（生产环境请修改）
       admin_password = {{ grafana_admin_password }}
+      # 密钥（用于签名，生产环境请修改）
+      secret_key = {{ grafana_secret_key }}
+      # 禁用Gravatar头像
+      disable_gravatar = {{ grafana_disable_gravatar }}
+      # Cookie安全设置
+      cookie_secure = false
+      cookie_samesite = lax
+      # 内容安全策略
+      content_security_policy = false
+      # 严格传输安全
+      strict_transport_security = false
+
+      # ============================================
+      # 数据库配置
+      # ============================================
 
       [database]
-      type = sqlite3
-      path = {{ grafana_data_path }}/grafana.db
+      # 数据库类型
+      type = {{ grafana_db_type }}
+      # 数据库路径
+      path = {{ grafana_db_path }}
+      # 最大空闲连接数
+      max_idle_conn = 2
+      # 最大打开连接数
+      max_open_conn = 0
+      # 连接最大生命周期
+      conn_max_lifetime = 14400
+
+      # ============================================
+      # 会话配置
+      # ============================================
+
+      [session]
+      # 会话提供者
+      provider = {{ grafana_session_provider }}
+      # 会话提供者配置
+      provider_config = {{ grafana_session_provider_config }}
+      # 会话过期时间（秒）
+      session_life_time = 86400
+
+      # ============================================
+      # 用户配置
+      # ============================================
+
+      [users]
+      # 查看者是否可以编辑仪表板
+      viewers_can_edit = {{ grafana_users_viewers_can_edit }}
+      # 是否允许用户注册
+      allow_sign_up = {{ grafana_users_allow_sign_up }}
+      # 是否允许用户创建组织
+      allow_org_create = {{ grafana_users_allow_org_create }}
+      # 自动分配组织
+      auto_assign_org = {{ grafana_users_auto_assign_org }}
+      # 自动分配组织角色
+      auto_assign_org_role = {{ grafana_users_auto_assign_org_role }}
+      # 默认主题
+      default_theme = dark
+
+      # ============================================
+      # 匿名访问配置
+      # ============================================
+
+      [auth.anonymous]
+      # 是否启用匿名访问
+      enabled = {{ grafana_anonymous_enabled }}
+      # 匿名访问组织ID
+      org_name = Main Org.
+      # 匿名访问角色
+      org_role = Viewer
+
+      # ============================================
+      # 告警配置
+      # ============================================
+
+      [alerting]
+      # 是否启用告警
+      enabled = {{ grafana_alerting_enabled }}
+      # 告警执行超时时间
+      execution_timeout = {{ grafana_alerting_execution_timeout }}
+      # 告警历史最大保留天数
+      max_history_age = 90
+
+      # ============================================
+      # 日志配置
+      # ============================================
 
       [log]
-      mode = console
-      level = info
+      # 日志模式：console、file
+      mode = {{ grafana_log_mode }}
+      # 日志级别：trace、debug、info、warn、error、critical
+      level = {{ grafana_log_level }}
+
+      # ============================================
+      # 路径配置
+      # ============================================
 
       [paths]
+      # 数据目录
       data = {{ grafana_data_path }}
+      # 日志目录
       logs = {{ grafana_log_path }}
-      plugins = /var/lib/grafana/plugins
+      # 插件目录
+      plugins = {{ grafana_plugins_dir }}
+      # Provisioning目录
       provisioning = {{ grafana_config_path }}/provisioning
+
+      # ============================================
+      # 插件配置
+      # ============================================
+
+      [plugins]
+      # 是否启用alpha插件
+      enable_alpha = {{ grafana_plugins_enable_alpha }}
+      # 应用TLS跳过验证
+      app_tls_skip_verify = {{ grafana_plugins_app_tls_skip_verify }}
+      # 允许加载未签名的插件
+      allow_loading_unsigned_plugins = ""
+
+      # ============================================
+      # 仪表板配置
+      # ============================================
+
+      [dashboards]
+      # 默认仪表板主页
+      default_home_dashboard_path = {{ grafana_config_path }}/provisioning/dashboards/home.json
+      # 版本历史最大数量
+      versions_to_keep = 20
+
+      # ============================================
+      # 分析配置
+      # ============================================
+
+      [analytics]
+      # 是否启用分析
+      reporting_enabled = false
+      # 是否检查更新
+      check_for_updates = false
+      # 是否启用Google分析
+      google_analytics_ua_id = ""
     owner: "grafana"
     group: "grafana"
     mode: '0644'
@@ -81,21 +232,641 @@
   loop:
     - datasources
     - dashboards
+    - access-control
+    - notifiers
   become: true
 
 - name: 生成 datasource 配置
   ansible.builtin.copy:
     dest: "{{ grafana_config_path }}/provisioning/datasources/victoriametrics.yml"
     content: |
+      # ============================================
+      # Grafana 数据源配置
+      # ============================================
+      # 说明：自动配置Grafana数据源
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
       apiVersion: 1
 
       datasources:
+        # ============================================
+        # VictoriaMetrics 数据源
+        # ============================================
+        # 说明：主数据源，用于查询指标数据
+        # 地址：通过vmauth访问，支持认证和负载均衡
+
         - name: VictoriaMetrics
           type: prometheus
           access: proxy
           url: http://{{ vmauth_1_ip }}:8427
           isDefault: true
           editable: true
+          jsonData:
+            timeInterval: 30s
+            httpMethod: POST
+          version: 1
+
+        # ============================================
+        # VictoriaMetrics 直连数据源
+        # ============================================
+        # 说明：直接访问vmselect，绕过vmauth认证
+        # 用途：调试和性能测试
+
+        - name: VictoriaMetrics-Direct
+          type: prometheus
+          access: proxy
+          url: http://{{ vmselect_1_ip }}:8481
+          isDefault: false
+          editable: true
+          jsonData:
+            timeInterval: 30s
+            httpMethod: POST
+          version: 1
+
+        # ============================================
+        # Alertmanager 数据源
+        # ============================================
+        # 说明：用于查看和管理告警
+        # 地址：Alertmanager API
+
+        - name: Alertmanager
+          type: alertmanager
+          access: proxy
+          url: http://{{ alertmanager_1_ip }}:9093
+          isDefault: false
+          editable: true
+          jsonData:
+            implementation: prometheus
+          version: 1
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+
+- name: 生成用户配置
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/provisioning/access-control/users.yml"
+    content: |
+      # ============================================
+      # Grafana 用户配置
+      # ============================================
+      # 说明：自动创建Grafana用户
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      apiVersion: 1
+
+      users:
+        # ============================================
+        # 只读用户
+        # ============================================
+        # 说明：只能查看仪表板，不能编辑
+
+        - name: viewer
+          email: viewer@example.com
+          login: viewer
+          password: viewer123
+          role: Viewer
+
+        # ============================================
+        # 编辑用户
+        # ============================================
+        # 说明：可以查看和编辑仪表板
+
+        - name: editor
+          email: editor@example.com
+          login: editor
+          password: editor123
+          role: Editor
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+
+- name: 生成通知配置
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/provisioning/notifiers/webhook.yml"
+    content: |
+      # ============================================
+      # Grafana 通知配置
+      # ============================================
+      # 说明：配置Grafana告警通知渠道
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      notifiers:
+        # ============================================
+        # Webhook 通知
+        # ============================================
+        # 说明：通过webhook发送告警通知
+        # 注意：请根据实际需求修改URL
+
+        - name: Webhook
+          type: webhook
+          uid: webhook-notifier
+          is_default: true
+          settings:
+            url: http://127.0.0.1:5001/grafana
+            httpMethod: POST
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+
+- name: 生成仪表板配置
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/provisioning/dashboards/dashboards.yml"
+    content: |
+      # ============================================
+      # Grafana 仪表板配置
+      # ============================================
+      # 说明：自动加载仪表板配置
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      apiVersion: 1
+
+      providers:
+        # ============================================
+        # 本地仪表板提供者
+        # ============================================
+
+        - name: 'Default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 10
+          allowUiUpdates: true
+          options:
+            path: {{ grafana_config_path }}/provisioning/dashboards
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+
+- name: 生成示例仪表板
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/provisioning/dashboards/home.json"
+    content: |
+      {
+        "annotations": {
+          "list": [
+            {
+              "builtIn": 1,
+              "datasource": "-- Grafana --",
+              "enable": true,
+              "hide": true,
+              "iconColor": "rgba(0, 211, 255, 1)",
+              "name": "Annotations & Alerts",
+              "type": "dashboard"
+            }
+          ]
+        },
+        "editable": true,
+        "gnetId": null,
+        "graphTooltip": 0,
+        "id": null,
+        "links": [],
+        "panels": [
+          {
+            "datasource": "VictoriaMetrics",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "tooltip": false,
+                    "viz": false,
+                    "legend": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 0
+            },
+            "id": 2,
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "tooltip": {
+                "mode": "single"
+              }
+            },
+            "targets": [
+              {
+                "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                "legendFormat": "{{instance}}",
+                "refId": "A"
+              }
+            ],
+            "title": "CPU使用率",
+            "type": "timeseries"
+          },
+          {
+            "datasource": "VictoriaMetrics",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "tooltip": false,
+                    "viz": false,
+                    "legend": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 0
+            },
+            "id": 4,
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "tooltip": {
+                "mode": "single"
+              }
+            },
+            "targets": [
+              {
+                "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+                "legendFormat": "{{instance}}",
+                "refId": "A"
+              }
+            ],
+            "title": "内存使用率",
+            "type": "timeseries"
+          },
+          {
+            "datasource": "VictoriaMetrics",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                },
+                "unit": "percent"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 8
+            },
+            "id": 6,
+            "options": {
+              "orientation": "auto",
+              "reduceOptions": {
+                "values": false,
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": ""
+              },
+              "showThresholdLabels": false,
+              "showThresholdMarkers": true
+            },
+            "pluginVersion": "8.0.0",
+            "targets": [
+              {
+                "expr": "(1 - (node_filesystem_avail_bytes{fstype!~\"tmpfs|fuse.lxcfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|fuse.lxcfs\"})) * 100",
+                "legendFormat": "{{instance}} {{mountpoint}}",
+                "refId": "A"
+              }
+            ],
+            "title": "磁盘使用率",
+            "type": "gauge"
+          },
+          {
+            "datasource": "VictoriaMetrics",
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "custom": {
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "gradientMode": "none",
+                  "hideFrom": {
+                    "tooltip": false,
+                    "viz": false,
+                    "legend": false
+                  },
+                  "lineInterpolation": "linear",
+                  "lineWidth": 1,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true
+                },
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "unit": "Bps"
+              },
+              "overrides": []
+            },
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 8
+            },
+            "id": 8,
+            "options": {
+              "legend": {
+                "calcs": [],
+                "displayMode": "list",
+                "placement": "bottom"
+              },
+              "tooltip": {
+                "mode": "single"
+              }
+            },
+            "targets": [
+              {
+                "expr": "rate(node_network_receive_bytes_total{device!=\"lo\"}[5m])",
+                "legendFormat": "{{instance}} {{device}}",
+                "refId": "A"
+              }
+            ],
+            "title": "网络入站流量",
+            "type": "timeseries"
+          }
+        ],
+        "refresh": "10s",
+        "schemaVersion": 27,
+        "style": "dark",
+        "tags": [
+          "victoriametrics",
+          "system"
+        ],
+        "templating": {
+          "list": []
+        },
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "timepicker": {},
+        "timezone": "",
+        "title": "VictoriaMetrics 监控概览",
+        "uid": "home",
+version: 1
+      }
+    owner: "grafana"
+    group: "grafana"
+    mode: '0644'
+  become: true
+
+- name: 生成高德地图配置
+  ansible.builtin.copy:
+    dest: "{{ grafana_config_path }}/provisioning/dashboards/amap.json"
+    content: |
+      {
+        "id": null,
+        "title": "高德地图配置",
+        "type": "geomap",
+        "tooltip": {
+          "mode": "tooltip"
+        },
+        "options": {
+          "view": {
+            "id": "coordinates",
+            "lat": 35.8617,
+            "lon": 104.1954,
+            "zoom": 4
+          },
+          "layers": [
+            {
+              "type": "markers",
+              "config": {
+                "showLegend": true,
+                "legendDisplayMode": "table",
+                "legendPlacement": "bottom",
+                "legendCalcs": [],
+                "legendValuesV2": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "color": {
+                  "exponent": 0.5,
+                  "fill": "dark-orange",
+                  "mode": "opacity",
+                  "reverse": false,
+                  "scale": "exponential",
+                  "scheme": "Oranges",
+                  "steps": 128
+                },
+                "opacity": 0.8,
+                "radius": {
+                  "fixed": 10,
+                  "max": 30,
+                  "min": 2,
+                  "mode": "linear"
+                }
+              },
+              "location": {
+                "mode": "auto"
+              },
+              "tooltip": true
+            }
+          ],
+          "basemap": {
+            "type": "custom",
+            "config": {
+              "type": "xyz",
+              "url": "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}",
+              "attribution": "高德地图"
+            }
+          },
+          "controls": {
+            "mouseWheelZoom": true,
+            "showAttribution": true,
+            "showDebug": false,
+            "showMeasureTools": false,
+            "showScale": false,
+            "showZoom": true
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "orange",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 500
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": []
+        },
+        "dependencies": {
+          "grafanaVersion": "8.x.x",
+          "panels": [
+            {
+              "name": "GeoMap",
+              "id": "geomap-panel",
+              "version": "*"
+            }
+          ],
+          "plugins": []
+        },
+        "schemaVersion": 30,
+        "style": "dark",
+        "tags": [
+          "amap",
+          "geo"
+        ],
+        "templating": {
+          "list": []
+        },
+        "time": {
+          "from": "now-24h",
+          "to": "now"
+        },
+        "timepicker": {},
+        "timezone": "",
+        "title": "高德地图访问分布",
+        "uid": "amap-geo",
+        "version": 1
+      }
     owner: "grafana"
     group: "grafana"
     mode: '0644'

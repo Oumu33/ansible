@@ -15,6 +15,22 @@ vm_log_dir: "/var/log/victoriametrics"
 # 系统用户
 vm_user: "victoriametrics"
 
+# 主机IP地址配置 (修改这些IP即可更新所有配置)
+vmstorage_1_ip: "172.22.0.10"
+vmstorage_2_ip: "172.22.0.11"
+vmstorage_3_ip: "172.22.0.12"
+vminsert_1_ip: "172.22.0.13"
+vminsert_2_ip: "172.22.0.14"
+vminsert_3_ip: "172.22.0.15"
+vmselect_1_ip: "172.22.0.16"
+vmselect_2_ip: "172.22.0.17"
+vmselect_3_ip: "172.22.0.18"
+vmauth_1_ip: "172.22.0.19"
+vmalert_1_ip: "172.22.0.20"
+vmagent_1_ip: "172.22.0.21"
+alertmanager_1_ip: "172.22.0.22"
+grafana_1_ip: "172.22.0.23"
+
 # vmstorage 配置
 vmstorage_port: 8482
 vmstorage_vminsert_port: 8400
@@ -38,12 +54,13 @@ vmauth_http_listen_addr: "0.0.0.0:8427"
 # vmalert 配置
 vmalert_port: 8880
 vmalert_http_listen_addr: "0.0.0.0:8880"
-vmalert_notifier_url: "http://localhost:9093"
+vmalert_notifier_url: "http://{{ alertmanager_1_ip }}:9093"
+vmalert_datasource_url: "http://{{ vmauth_1_ip }}:8427"
 
 # vmagent 配置
 vmagent_port: 8429
 vmagent_http_listen_addr: "0.0.0.0:8429"
-vmagent_remote_write_url: "http://localhost:8427"
+vmagent_remote_write_url: "http://{{ vmauth_1_ip }}:8427"
 
 # alertmanager 配置
 alertmanager_port: 9093

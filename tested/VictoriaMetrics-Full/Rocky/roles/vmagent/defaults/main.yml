@@ -2,7 +2,34 @@
 vmagent_binary_url: "https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/{{ victoriametrics_version }}/vmagent-{{ victoriametrics_version }}-linux-amd64.tar.gz"
 vmagent_config_path: "{{ vm_config_dir }}/vmagent/config.yml"
 vmagent_log_path: "{{ vm_log_dir }}/vmagent"
-vmagent_scrape_configs:
-  - job_name: 'node'
-    static_configs:
-      - targets: ['localhost:9100']
+
+# 采集间隔配置
+vmagent_scrape_interval: "15s"
+vmagent_evaluation_interval: "15s"
+
+# node_exporter采集目标（物理服务器）
+vmagent_node_targets:
+  - "{{ vmstorage_1_ip }}:9100"
+  - "{{ vmstorage_2_ip }}:9100"
+  - "{{ vmstorage_3_ip }}:9100"
+  - "{{ vminsert_1_ip }}:9100"
+  - "{{ vminsert_2_ip }}:9100"
+  - "{{ vminsert_3_ip }}:9100"
+  - "{{ vmselect_1_ip }}:9100"
+  - "{{ vmselect_2_ip }}:9100"
+  - "{{ vmselect_3_ip }}:9100"
+  - "{{ vmauth_1_ip }}:9100"
+  - "{{ vmalert_1_ip }}:9100"
+  - "{{ alertmanager_1_ip }}:9100"
+  - "{{ grafana_1_ip }}:9100"
+
+# SNMP设备采集目标（交换机）
+vmagent_snmp_targets:
+  - "192.168.1.1"
+  - "192.168.1.2"
+
+# SNMP exporter地址
+vmagent_snmp_exporter_url: "snmp_exporter:9116"
+
+# 是否启用SNMP采集
+vmagent_enable_snmp: false

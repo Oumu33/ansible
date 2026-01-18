@@ -47,20 +47,153 @@
 
 - name: 生成 vmagent 配置文件
   ansible.builtin.copy:
-    dest: "/etc/victoriametrics/vmagent/scrape.yml"
+    dest: "{{ vmagent_config_path }}"
     content: |
+      # ============================================
+      # vmagent 采集配置文件
+      # ============================================
+      # 说明：定义vmagent采集哪些目标的指标
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
       global:
-        scrape_interval: 15s
-        evaluation_interval: 15s
+        # 采集间隔时间
+        scrape_interval: {{ vmagent_scrape_interval }}
+        # 评估间隔时间
+        evaluation_interval: {{ vmagent_evaluation_interval }}
+
+      # ============================================
+      # 采集任务配置
+      # ============================================
 
       scrape_configs:
-        - job_name: 'victoriametrics'
+        # ============================================
+        # VictoriaMetrics 集群采集
+        # ============================================
+
+        # 采集vmselect指标（查询节点）
+        - job_name: 'vmselect'
           static_configs:
-            - targets: ['localhost:8481']
+            - targets:
+                - '{{ vmselect_1_ip }}:8481'
+                - '{{ vmselect_2_ip }}:8481'
+                - '{{ vmselect_3_ip }}:8481'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'vmselect'
+
+        # 采集vminsert指标（写入节点）
+        - job_name: 'vminsert'
+          static_configs:
+            - targets:
+                - '{{ vminsert_1_ip }}:8480'
+                - '{{ vminsert_2_ip }}:8480'
+                - '{{ vminsert_3_ip }}:8480'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'vminsert'
+
+        # 采集vmstorage指标（存储节点）
+        - job_name: 'vmstorage'
+          static_configs:
+            - targets:
+                - '{{ vmstorage_1_ip }}:8482'
+                - '{{ vmstorage_2_ip }}:8482'
+                - '{{ vmstorage_3_ip }}:8482'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'vmstorage'
+
+        # 采集vmauth指标（认证节点）
+        - job_name: 'vmauth'
+          static_configs:
+            - targets:
+                - '{{ vmauth_1_ip }}:8427'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'vmauth'
+
+        # 采集vmalert指标（告警节点）
+        - job_name: 'vmalert'
+          static_configs:
+            - targets:
+                - '{{ vmalert_1_ip }}:8880'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'vmalert'
+
+        # 采集alertmanager指标（告警管理）
+        - job_name: 'alertmanager'
+          static_configs:
+            - targets:
+                - '{{ alertmanager_1_ip }}:9093'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'alertmanager'
+
+        # 采集grafana指标（可视化）
+        - job_name: 'grafana'
+          static_configs:
+            - targets:
+                - '{{ grafana_1_ip }}:3000'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'grafana'
+
+        # ============================================
+        # 物理服务器监控（node_exporter）
+        # ============================================
+        # 说明：采集物理服务器的系统指标
+        # 要求：目标主机需要安装node_exporter，监听端口9100
+
+        - job_name: 'node_exporter'
+          static_configs:
+            - targets:
+                {% for target in vmagent_node_targets %}
+                - '{{ target }}'
+                {% endfor %}
+              labels:
+                cluster: 'servers'
+                component: 'node_exporter'
+
+        # ============================================
+        # vmagent 自身监控
+        # ============================================
 
         - job_name: 'vmagent'
           static_configs:
-            - targets: ['localhost:8429']
+            - targets:
+                - 'localhost:8429'
+              labels:
+                cluster: 'victoriametrics'
+                component: 'vmagent'
+
+        # ============================================
+        # SNMP设备监控（交换机）
+        # ============================================
+        # 说明：采集SNMP设备（如交换机）的指标
+        # 要求：需要部署SNMP exporter，并配置SNMP community
+        # 注意：默认禁用，如需启用请设置 vmagent_enable_snmp: true
+
+        {% if vmagent_enable_snmp %}
+        - job_name: 'snmp_switch'
+          static_configs:
+            - targets:
+                {% for target in vmagent_snmp_targets %}
+                - '{{ target }}'
+                {% endfor %}
+          metrics_path: /snmp
+          params:
+            module: ['if_mib']
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: __param_target
+            - source_labels: [__param_target]
+              target_label: instance
+            - target_label: __address__
+              replacement: '{{ vmagent_snmp_exporter_url }}'
+        {% endif %}
     owner: "{{ vm_user }}"
     group: "{{ vm_user }}"
     mode: '0644'

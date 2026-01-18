@@ -58,6 +58,8 @@ vmalert_port: 8880
 vmalert_http_listen_addr: "0.0.0.0:8880"
 vmalert_notifier_url: "http://{{ alertmanager_1_ip }}:9093"
 vmalert_datasource_url: "http://{{ vmauth_1_ip }}:8427"
+vmalert_rules_dir: "{{ vm_install_dir }}/rules"
+vmalert_evaluation_interval: "30s"
 
 # vmagent 配置
 vmagent_port: 8429
