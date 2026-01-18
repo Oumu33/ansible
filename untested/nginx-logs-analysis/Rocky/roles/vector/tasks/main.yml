@@ -1,0 +1,237 @@
+---
+# ============================================
+# Vector部署任务
+# ============================================
+# 说明：部署Vector日志采集工具，采集Nginx日志并写入ClickHouse
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+- name: 创建vector用户
+  ansible.builtin.user:
+    name: "{{ vector_user }}"
+    system: true
+    shell: /bin/false
+    home: /opt/vector
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+    mode: '0755'
+  loop:
+    - "{{ vector_install_dir }}"
+    - "{{ vector_config_dir }}"
+    - "{{ vector_data_dir }}"
+    - "{{ vector_log_dir }}"
+  become: true
+
+- name: 下载Vector二进制文件
+  ansible.builtin.get_url:
+    url: "{{ vector_binary_url }}"
+    dest: /tmp/vector.tar.gz
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 解压Vector
+  ansible.builtin.unarchive:
+    src: /tmp/vector.tar.gz
+    dest: "{{ vector_install_dir }}"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+  become: true
+
+- name: 下载GeoIP数据库
+  ansible.builtin.get_url:
+    url: "{{ geoip_download_url }}"
+    dest: "{{ geoip_database_path }}"
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 设置GeoIP数据库权限
+  ansible.builtin.file:
+    path: "{{ geoip_database_path }}"
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+    mode: '0644'
+  become: true
+
+- name: 生成Vector配置文件
+  ansible.builtin.copy:
+    dest: "{{ vector_config_dir }}/vector.toml"
+    content: |
+      # ============================================
+      # Vector配置文件
+      # ============================================
+      # 说明：采集Nginx日志，进行GeoIP转换，写入ClickHouse
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      # ============================================
+      # 数据源：Nginx访问日志
+      # ============================================
+
+      [sources.nginx_access]
+        type = "file"
+        include = ["{{ nginx_log_path }}"]
+        read_from = "beginning"
+
+      # ============================================
+      # 转换：解析Nginx日志
+      # ============================================
+
+      [transforms.parse_nginx]
+        type = "regex_parser"
+        inputs = ["nginx_access"]
+        regex = '^(?P<remote_addr>\S+) (?P<remote_user>\S+) \S+ \[(?P<time_local>[^\]]+)\] "(?P<request>\S+ \S+ \S+)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)"(?: (?P<request_time>\d+\.\d+))?(?: (?P<upstream_response_time>\d+\.\d+))?'
+
+      # ============================================
+      # 转换：时间戳转换
+      # ============================================
+
+      [transforms.to_timestamp]
+        type = "remap"
+        inputs = ["parse_nginx"]
+        source = '''
+          .timestamp = parse_timestamp(.time_local, "%d/%b/%Y:%H:%M:%S %z") ?? now()
+        '''
+
+      # ============================================
+      # 转换：GeoIP地理位置转换
+      # ============================================
+
+      [transforms.geoip]
+        type = "geoip"
+        inputs = ["to_timestamp"]
+        database = "{{ geoip_database_path }}"
+        source = "remote_addr"
+        target = "geoip"
+
+      # ============================================
+      # 转换：提取地理位置信息
+      # ============================================
+
+      [transforms.extract_geoip]
+        type = "remap"
+        inputs = ["geoip"]
+        source = '''
+          .country = .geoip.country_code ?? ""
+          .city = .geoip.city ?? ""
+          .latitude = .geoip.latitude ?? 0.0
+          .longitude = .geoip.longitude ?? 0.0
+          .asn = .geoip.asn ?? 0
+          .organization = .geoip.organization ?? ""
+        '''
+
+      # ============================================
+      # 转换：转换为ClickHouse格式
+      # ============================================
+
+      [transforms.to_clickhouse]
+        type = "remap"
+        inputs = ["extract_geoip"]
+        source = '''
+          .clickhouse = {
+            timestamp: .timestamp,
+            remote_addr: .remote_addr,
+            remote_user: .remote_user,
+            request: .request,
+            status: to_int!(.status) ?? 0,
+            body_bytes_sent: to_int!(.body_bytes_sent) ?? 0,
+            http_referer: .http_referer,
+            http_user_agent: .http_user_agent,
+            request_time: to_float!(.request_time) ?? 0.0,
+            upstream_response_time: to_float!(.upstream_response_time) ?? 0.0,
+            country: .country,
+            city: .city,
+            latitude: .latitude,
+            longitude: .longitude,
+            asn: .asn,
+            organization: .organization
+          }
+        '''
+
+      # ============================================
+      # 目标：写入ClickHouse
+      # ============================================
+
+      [sinks.clickhouse]
+        type = "clickhouse"
+        inputs = ["to_clickhouse"]
+        endpoint = "http://{{ clickhouse_host }}:{{ clickhouse_port }}"
+        database = "{{ clickhouse_database }}"
+        table = "access_logs"
+        compression = "gzip"
+        encoding.codec = "json"
+        batch.max_events = 1000
+        batch.timeout_secs = 10
+        healthcheck.enabled = true
+
+      # ============================================
+      # 目标：控制台输出（调试用）
+      # ============================================
+
+      [sinks.console]
+        type = "console"
+        inputs = ["to_clickhouse"]
+        encoding.codec = "json"
+        target = "stdout"
+        only_errors = false
+
+      # ============================================
+      # API端点（监控Vector状态）
+      # ============================================
+
+      [api]
+        enabled = true
+        address = "0.0.0.0:{{ vector_http_port }}"
+    owner: "{{ vector_user }}"
+    group: "{{ vector_user }}"
+    mode: '0644'
+  become: true
+
+- name: 创建systemd服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/vector.service
+    content: |
+      [Unit]
+      Description=Vector
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ vector_user }}
+      Group={{ vector_user }}
+      WorkingDirectory={{ vector_install_dir }}
+      ExecStart={{ vector_install_dir }}/bin/vector --config {{ vector_config_dir }}/vector.toml
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+
+- name: 启动并启用Vector服务
+  ansible.builtin.systemd:
+    name: vector
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/vector.tar.gz
+    state: absent
+  become: true

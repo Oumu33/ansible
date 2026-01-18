@@ -1,0 +1,49 @@
+---
+# Nginx日志分析系统全局变量
+
+# 版本配置
+clickhouse_version: "24.3"
+vector_version: "0.52.0"
+geoip_version: "GeoLite2-City.mmdb"
+
+# 安装目录
+clickhouse_install_dir: "/opt/clickhouse"
+clickhouse_data_dir: "/var/lib/clickhouse"
+clickhouse_config_dir: "/etc/clickhouse-server"
+clickhouse_log_dir: "/var/log/clickhouse-server"
+
+vector_install_dir: "/opt/vector"
+vector_config_dir: "/etc/vector"
+vector_data_dir: "/opt/vector/data"
+vector_log_dir: "/opt/vector/logs"
+
+# ClickHouse配置
+clickhouse_http_port: 8123
+clickhouse_tcp_port: 9000
+clickhouse_native_port: 9004
+clickhouse_user: "clickhouse"
+clickhouse_password: "clickhouse"
+clickhouse_database: "nginx_logs"
+
+# Vector配置
+vector_http_port: 8686
+vector_user: "vector"
+
+# GeoIP配置
+geoip_database_path: "/etc/vector/GeoLite2-City.mmdb"
+geoip_download_url: "https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-City.mmdb"
+
+# Nginx日志路径
+nginx_log_path: "/var/log/nginx/access.log"
+
+# 下载超时
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true
+
+# 主机IP地址配置
+clickhouse_1_ip: "172.22.0.30"
+vector_1_ip: "172.22.0.31"
+nginx_1_ip: "172.22.0.32"

@@ -1,0 +1,245 @@
+---
+# ============================================
+# ClickHouse部署任务
+# ============================================
+# 说明：部署ClickHouse数据库，用于存储和分析Nginx日志
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+- name: 创建clickhouse用户
+  ansible.builtin.user:
+    name: "{{ clickhouse_user }}"
+    system: true
+    shell: /bin/false
+    home: /var/lib/clickhouse
+    create_home: false
+  become: true
+
+- name: 创建必要的目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ clickhouse_user }}"
+    group: "{{ clickhouse_user }}"
+    mode: '0755'
+  loop:
+    - "{{ clickhouse_install_dir }}"
+    - "{{ clickhouse_data_dir }}"
+    - "{{ clickhouse_config_dir }}"
+    - "{{ clickhouse_log_dir }}"
+    - "{{ clickhouse_pid_path }}"
+    - "/var/log/clickhouse-server"
+  become: true
+
+- name: 下载ClickHouse二进制文件
+  ansible.builtin.get_url:
+    url: "{{ clickhouse_binary_url }}"
+    dest: /tmp/clickhouse-common-static.tgz
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 下载ClickHouse Server
+  ansible.builtin.get_url:
+    url: "{{ clickhouse_server_binary_url }}"
+    dest: /tmp/clickhouse-server.tgz
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 下载ClickHouse Client
+  ansible.builtin.get_url:
+    url: "{{ clickhouse_client_binary_url }}"
+    dest: /tmp/clickhouse-client.tgz
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 解压ClickHouse Common
+  ansible.builtin.unarchive:
+    src: /tmp/clickhouse-common-static.tgz
+    dest: "{{ clickhouse_install_dir }}"
+    remote_src: true
+    owner: "{{ clickhouse_user }}"
+    group: "{{ clickhouse_user }}"
+  become: true
+
+- name: 解压ClickHouse Server
+  ansible.builtin.unarchive:
+    src: /tmp/clickhouse-server.tgz
+    dest: "{{ clickhouse_install_dir }}"
+    remote_src: true
+    owner: "{{ clickhouse_user }}"
+    group: "{{ clickhouse_user }}"
+  become: true
+
+- name: 解压ClickHouse Client
+  ansible.builtin.unarchive:
+    src: /tmp/clickhouse-client.tgz
+    dest: "{{ clickhouse_install_dir }}"
+    remote_src: true
+    owner: "{{ clickhouse_user }}"
+    group: "{{ clickhouse_user }}"
+  become: true
+
+- name: 生成ClickHouse配置文件
+  ansible.builtin.copy:
+    dest: "{{ clickhouse_config_dir }}/config.xml"
+    content: |
+      <?xml version="1.0"?>
+      <yandex>
+        <!-- 日志配置 -->
+        <logger>
+            <level>information</level>
+            <log>{{ clickhouse_log_path }}/clickhouse-server.log</log>
+            <errorlog>{{ clickhouse_log_path }}/clickhouse-server.err.log</errorlog>
+            <size>100M</size>
+            <count>10</count>
+        </logger>
+
+        <!-- HTTP接口 -->
+        <http_port>{{ clickhouse_http_port }}</http_port>
+
+        <!-- TCP接口 -->
+        <tcp_port>{{ clickhouse_tcp_port }}</tcp_port>
+
+        <!-- MySQL接口（可选） -->
+        <mysql_port>9004</mysql_port>
+
+        <!-- 用户配置 -->
+        <users>
+            <default>
+                <password>{{ clickhouse_password }}</password>
+                <networks>
+                    <ip>::/0</ip>
+                </networks>
+                <profile>default</profile>
+                <quota>default</quota>
+            </default>
+        </users>
+
+        <!-- 数据目录 -->
+        <path>{{ clickhouse_data_dir }}</path>
+
+        <!-- 内存限制 -->
+        <max_memory_usage>10000000000</max_memory_usage>
+
+        <!-- 并发查询 -->
+        <max_concurrent_queries>100</max_concurrent_queries>
+
+        <!-- 集群配置（单机模式可省略） -->
+        <remote_servers>
+            <nginx_logs_cluster>
+                <shard>
+                    <replica>
+                        <host>localhost</host>
+                        <port>{{ clickhouse_tcp_port }}</port>
+                    </replica>
+                </shard>
+            </nginx_logs_cluster>
+        </remote_servers>
+
+        <!-- ZooKeeper配置（集群模式需要） -->
+        <!--
+        <zookeeper>
+            <node index="1">
+                <host>zookeeper1</host>
+                <port>2181</port>
+            </node>
+        </zookeeper>
+        -->
+
+        <!-- 时区 -->
+        <timezone>Asia/Shanghai</timezone>
+
+        <!-- 启用GeoIP功能 -->
+        <geobase>
+            <path>/etc/clickhouse-server/GeoLite2-City.mmdb</path>
+        </geobase>
+      </yandex>
+    owner: "{{ clickhouse_user }}"
+    group: "{{ clickhouse_user }}"
+    mode: '0644'
+  become: true
+
+- name: 创建Nginx日志数据库
+  ansible.builtin.shell: |
+    {{ clickhouse_install_dir }}/clickhouse-client --host localhost --port {{ clickhouse_tcp_port }} --user default --password {{ clickhouse_password }} --query "CREATE DATABASE IF NOT EXISTS {{ clickhouse_database }}"
+  become: true
+  become_user: "{{ clickhouse_user }}"
+  ignore_errors: true
+
+- name: 创建Nginx访问日志表
+  ansible.builtin.shell: |
+    {{ clickhouse_install_dir }}/clickhouse-client --host localhost --port {{ clickhouse_tcp_port }} --user default --password {{ clickhouse_password }} --query "CREATE TABLE IF NOT EXISTS {{ clickhouse_database }}.access_logs (
+        timestamp DateTime,
+        remote_addr String,
+        remote_user String,
+        request String,
+        status UInt16,
+        body_bytes_sent UInt64,
+        http_referer String,
+        http_user_agent String,
+        request_time Float32,
+        upstream_response_time Float32,
+        country String,
+        city String,
+        latitude Float32,
+        longitude Float32,
+        asn UInt32,
+        organization String
+    ) ENGINE = MergeTree()
+    PARTITION BY toYYYYMM(timestamp)
+    ORDER BY (timestamp, remote_addr)
+    SETTINGS index_granularity = 8192"
+  become: true
+  become_user: "{{ clickhouse_user }}"
+  ignore_errors: true
+
+- name: 创建地理位置索引
+  ansible.builtin.shell: |
+    {{ clickhouse_install_dir }}/clickhouse-client --host localhost --port {{ clickhouse_tcp_port }} --user default --password {{ clickhouse_password }} --query "ALTER TABLE {{ clickhouse_database }}.access_logs ADD INDEX idx_country country TYPE minmax GRANULARITY 4"
+  become: true
+  become_user: "{{ clickhouse_user }}"
+  ignore_errors: true
+
+- name: 创建systemd服务文件
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/clickhouse-server.service
+    content: |
+      [Unit]
+      Description=ClickHouse Server (analytic DBMS for big data)
+      After=network.target
+
+      [Service]
+      Type=simple
+      User={{ clickhouse_user }}
+      Group={{ clickhouse_user }}
+      WorkingDirectory={{ clickhouse_data_dir }}
+      ExecStart={{ clickhouse_install_dir }}/clickhouse-server --config={{ clickhouse_config_dir }}/config.xml --pid-file={{ clickhouse_pid_path }}/clickhouse-server.pid
+      Restart=always
+      RestartSec=5
+      StandardOutput=journal
+      StandardError=journal
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+  become: true
+
+- name: 启动并启用ClickHouse服务
+  ansible.builtin.systemd:
+    name: clickhouse-server
+    state: "{{ service_state }}"
+    enabled: "{{ service_enabled }}"
+    daemon_reload: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/clickhouse-common-static.tgz
+    - /tmp/clickhouse-server.tgz
+    - /tmp/clickhouse-client.tgz
+  become: true

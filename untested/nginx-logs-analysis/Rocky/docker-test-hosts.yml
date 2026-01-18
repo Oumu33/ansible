@@ -1,0 +1,104 @@
+version: '3.8'
+
+# ============================================
+# Nginx日志分析系统测试环境
+# ============================================
+# 说明：Docker Compose配置，用于创建测试主机
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+services:
+  # ClickHouse数据库
+  clickhouse-1:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: clickhouse-1
+    hostname: clickhouse-1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+      - "9004:9004"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
+    networks:
+      nginx-logs-net:
+        ipv4_address: 172.22.0.30
+    privileged: true
+    command: >
+      sh -c "
+        apt-get update &&
+        apt-get install -y openssh-server &&
+        mkdir -p /var/run/sshd &&
+        echo 'root:root' | chpasswd &&
+        sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config &&
+        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config &&
+        /usr/sbin/sshd -D &
+        /entrypoint.sh
+      "
+
+  # Vector日志采集
+  vector-1:
+    image: timberio/vector:0.52.0-alpine
+    container_name: vector-1
+    hostname: vector-1
+    ports:
+      - "8686:8686"
+    volumes:
+      - vector-data:/etc/vector
+      - vector-logs:/var/log/vector
+    networks:
+      nginx-logs-net:
+        ipv4_address: 172.22.0.31
+    privileged: true
+    command: >
+      sh -c "
+        apk add --no-cache openssh-server &&
+        mkdir -p /var/run/sshd &&
+        echo 'root:root' | chpasswd &&
+        ssh-keygen -A &&
+        /usr/sbin/sshd -D &
+        sleep infinity
+      "
+
+  # Nginx服务器
+  nginx-1:
+    image: nginx:latest
+    container_name: nginx-1
+    hostname: nginx-1
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx-data:/etc/nginx
+      - nginx-logs:/var/log/nginx
+    networks:
+      nginx-logs-net:
+        ipv4_address: 172.22.0.32
+    privileged: true
+    command: >
+      sh -c "
+        apt-get update &&
+        apt-get install -y openssh-server &&
+        mkdir -p /var/run/sshd &&
+        echo 'root:root' | chpasswd &&
+        sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config &&
+        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config &&
+        /usr/sbin/sshd -D &
+        nginx -g 'daemon off;'
+      "
+
+volumes:
+  clickhouse-data:
+  clickhouse-logs:
+  vector-data:
+  vector-logs:
+  nginx-data:
+  nginx-logs:
+
+networks:
+  nginx-logs-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24

@@ -1,0 +1,74 @@
+---
+# ============================================
+# Nginx GeoIP配置任务
+# ============================================
+# 说明：配置Nginx日志格式，支持GeoIP分析
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+- name: 检查Nginx是否已安装
+  ansible.builtin.command: which nginx
+  register: nginx_check
+  ignore_errors: true
+  changed_when: false
+
+- name: 提示用户安装Nginx
+  ansible.builtin.debug:
+    msg: "Nginx未安装，请先安装Nginx"
+  when: nginx_check.rc != 0
+
+- name: 创建Nginx配置目录
+  ansible.builtin.file:
+    path: "{{ nginx_config_dir }}/conf.d"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: true
+  when: nginx_check.rc == 0
+
+- name: 配置Nginx日志格式
+  ansible.builtin.copy:
+    dest: "{{ nginx_config_dir }}/conf.d/geoip-logging.conf"
+    content: |
+      # ============================================
+      # Nginx GeoIP日志配置
+      # ============================================
+      # 说明：配置Nginx日志格式，支持GeoIP分析
+      # 作者：VictoriaMetrics-Full
+      # 更新时间：2026-01-18
+      # ============================================
+
+      # 定义日志格式
+      log_format {{ nginx_log_format_name }} {{ nginx_log_format }};
+
+      # 使用GeoIP格式记录访问日志
+      access_log {{ nginx_log_dir }}/access.log {{ nginx_log_format_name }};
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  when: nginx_check.rc == 0
+
+- name: 测试Nginx配置
+  ansible.builtin.command: nginx -t
+  register: nginx_test
+  changed_when: false
+  become: true
+  when: nginx_check.rc == 0
+
+- name: 重载Nginx配置
+  ansible.builtin.command: nginx -s reload
+  become: true
+  when: nginx_check.rc == 0 and nginx_test.rc == 0
+
+- name: 确保Nginx日志目录存在
+  ansible.builtin.file:
+    path: "{{ nginx_log_dir }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: '0755'
+  become: true
+  when: nginx_check.rc == 0

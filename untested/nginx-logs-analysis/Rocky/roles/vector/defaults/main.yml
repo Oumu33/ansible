@@ -1,0 +1,24 @@
+---
+# Vector默认变量
+
+vector_binary_url: "https://github.com/vectordotdev/vector/releases/download/{{ vector_version }}/vector-{{ vector_version }}-x86_64-unknown-linux-musl.tar.gz"
+vector_install_dir: "/opt/vector"
+vector_config_dir: "/etc/vector"
+vector_data_dir: "/opt/vector/data"
+vector_log_dir: "/opt/vector/logs"
+vector_user: "vector"
+vector_http_port: 8686
+
+# ClickHouse配置
+clickhouse_host: "{{ clickhouse_1_ip }}"
+clickhouse_port: "{{ clickhouse_http_port }}"
+clickhouse_database: "{{ clickhouse_database }}"
+clickhouse_user: "{{ clickhouse_user }}"
+clickhouse_password: "{{ clickhouse_password }}"
+
+# Nginx日志配置
+nginx_log_path: "/var/log/nginx/access.log"
+
+# GeoIP配置
+geoip_database_path: "{{ geoip_database_path }}"
+geoip_download_url: "{{ geoip_download_url }}"

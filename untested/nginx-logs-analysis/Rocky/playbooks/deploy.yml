@@ -1,0 +1,32 @@
+---
+# ============================================
+# Nginx日志分析系统部署Playbook
+# ============================================
+# 说明：部署ClickHouse + Vector + Nginx GeoIP
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+- name: 部署ClickHouse数据库
+  hosts: clickhouse
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: clickhouse
+
+- name: 部署Vector日志采集
+  hosts: vector
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: vector
+
+- name: 配置Nginx GeoIP日志
+  hosts: nginx
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: nginx-geoip

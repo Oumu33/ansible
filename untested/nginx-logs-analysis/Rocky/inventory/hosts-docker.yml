@@ -1,0 +1,34 @@
+---
+# ============================================
+# Nginx日志分析系统Docker测试主机清单
+# ============================================
+# 说明：Docker容器测试环境的主机清单
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+all:
+  children:
+    clickhouse:
+      hosts:
+        clickhouse-1:
+          ansible_host: 172.22.0.30
+          ansible_user: root
+          ansible_ssh_pass: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+    vector:
+      hosts:
+        vector-1:
+          ansible_host: 172.22.0.31
+          ansible_user: root
+          ansible_ssh_pass: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+    nginx:
+      hosts:
+        nginx-1:
+          ansible_host: 172.22.0.32
+          ansible_user: root
+          ansible_ssh_pass: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'

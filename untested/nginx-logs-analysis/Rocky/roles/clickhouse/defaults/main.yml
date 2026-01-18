@@ -1,0 +1,13 @@
+---
+# ClickHouse默认变量
+
+clickhouse_binary_url: "https://github.com/ClickHouse/ClickHouse/releases/download/{{ clickhouse_version }}/clickhouse-common-static-{{ clickhouse_version }}.amd64.tgz"
+clickhouse_server_binary_url: "https://github.com/ClickHouse/ClickHouse/releases/download/{{ clickhouse_version }}/clickhouse-server-{{ clickhouse_version }}.amd64.tgz"
+clickhouse_client_binary_url: "https://github.com/ClickHouse/ClickHouse/releases/download/{{ clickhouse_version }}/clickhouse-client-{{ clickhouse_version }}.amd64.tgz"
+
+clickhouse_config_path: "{{ clickhouse_config_dir }}"
+clickhouse_data_path: "{{ clickhouse_data_dir }}"
+clickhouse_log_path: "{{ clickhouse_log_dir }}"
+clickhouse_pid_path: "/var/run/clickhouse-server"
+clickhouse_user: "clickhouse"
+clickhouse_group: "clickhouse"
