@@ -1,0 +1,38 @@
+---
+# SonarQube 默认变量
+
+sonarqube_version: "10.5.0"
+sonarqube_binary_url: "https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-{{ sonarqube_version }}.zip"
+
+# 安装目录
+sonarqube_install_dir: "/opt/sonarqube"
+sonarqube_data_dir: "/var/lib/sonarqube"
+sonarqube_log_dir: "/var/log/sonarqube"
+sonarqube_temp_dir: "/tmp/sonarqube"
+
+# SonarQube配置
+sonarqube_web_port: 9000
+sonarqube_web_context: "/"
+
+# 数据库配置
+sonarqube_jdbc_url: "jdbc:postgresql://localhost:5432/sonar"
+sonarqube_jdbc_username: "sonar"
+sonarqube_jdbc_password: "sonar"
+
+# Elasticsearch配置
+sonarqube_search_port: 9010
+sonarqube_search_node: "es-node-1"
+
+# 管理员账户
+sonarqube_admin_user: "admin"
+sonarqube_admin_password: "admin"
+
+# Java配置
+sonarqube_java_opts: "-Xmx2g -Xms2g -XX:+UseG1GC -XX:MaxGCPauseMillis=500"
+
+# 下载超时（秒）
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true

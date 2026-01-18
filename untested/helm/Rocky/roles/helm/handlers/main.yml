@@ -1,0 +1,7 @@
+---
+# Helm handlers
+
+- name: update helm repos
+  ansible.builtin.command:
+    cmd: helm repo update
+  become: true

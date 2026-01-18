@@ -1,0 +1,22 @@
+---
+# Helm 默认变量
+
+helm_binary_url: "https://get.helm.sh/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+helm_config_path: "{{ helm_config_dir }}"
+helm_data_path: "{{ helm_data_dir }}"
+helm_cache_path: "{{ helm_cache_dir }}"
+
+# Helm版本
+helm_version: "{{ helm_version }}"
+
+# Helm仓库
+helm_repositories: "{{ helm_repositories }}"
+
+# Helm插件
+helm_plugins_dir: "{{ helm_data_dir }}/plugins"
+
+# Kubernetes配置
+kubeconfig_path: "/root/.kube/config"
+
+# 默认插件
+helm_default_plugins: "{{ helm_default_plugins }}"

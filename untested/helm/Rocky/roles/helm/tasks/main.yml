@@ -1,0 +1,86 @@
+---
+# Helm 部署任务
+
+- name: 安装依赖包
+  ansible.builtin.package:
+    name:
+      - curl
+      - git
+      - wget
+    state: present
+  become: true
+
+- name: 创建Helm目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ helm_install_dir }}"
+    - "{{ helm_config_dir }}"
+    - "{{ helm_data_path }}"
+    - "{{ helm_cache_path }}"
+    - "{{ helm_plugins_dir }}"
+
+- name: 下载Helm二进制文件
+  ansible.builtin.get_url:
+    url: "{{ helm_binary_url }}"
+    dest: /tmp/helm.tar.gz
+    mode: '0644'
+    timeout: "{{ download_timeout }}"
+  become: true
+
+- name: 解压Helm二进制文件
+  ansible.builtin.unarchive:
+    src: /tmp/helm.tar.gz
+    dest: /tmp
+    remote_src: true
+  become: true
+
+- name: 安装Helm
+  ansible.builtin.copy:
+    src: /tmp/linux-amd64/helm
+    dest: "{{ helm_install_dir }}/helm"
+    mode: '0755'
+    remote_src: true
+  become: true
+
+- name: 验证Helm安装
+  ansible.builtin.command:
+    cmd: helm version
+  register: helm_version_output
+  changed_when: false
+  become: true
+
+- name: 显示Helm版本
+  ansible.builtin.debug:
+    var: helm_version_output.stdout_lines
+
+- name: 添加Helm仓库
+  kubernetes.core.helm_repository:
+    name: "{{ item.name }}"
+    repo_url: "{{ item.url }}"
+    state: present
+  loop: "{{ helm_repositories }}"
+  become: true
+
+- name: 更新Helm仓库
+  ansible.builtin.command:
+    cmd: helm repo update
+  become: true
+
+- name: 安装Helm插件
+  ansible.builtin.command:
+    cmd: "helm plugin install {{ item }}"
+    args:
+      chdir: "{{ helm_plugins_dir }}"
+  loop: "{{ helm_default_plugins }}"
+  ignore_errors: true
+  become: true
+
+- name: 清理临时文件
+  ansible.builtin.file:
+    path: /tmp/helm.tar.gz
+    state: absent
+  become: true

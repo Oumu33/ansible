@@ -1,0 +1,10 @@
+---
+# Helm 部署Playbook
+
+- name: 部署Helm包管理器
+  hosts: helm
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: helm

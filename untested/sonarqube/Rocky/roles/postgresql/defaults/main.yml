@@ -1,0 +1,32 @@
+---
+# PostgreSQL 默认变量
+
+postgresql_version: "16"
+postgresql_binary_url: "https://get.enterprisedb.com/postgresql/postgresql-{{ postgresql_version }}-1-linux-x64-binaries.tar.gz"
+
+# 安装目录
+postgresql_install_dir: "/usr/local/pgsql"
+postgresql_data_dir: "/var/lib/pgsql/data"
+postgresql_log_dir: "/var/log/postgresql"
+
+# PostgreSQL配置
+postgresql_port: 5432
+postgresql_max_connections: 200
+postgresql_shared_buffers: "256MB"
+postgresql_effective_cache_size: "1GB"
+
+# 数据库配置
+postgresql_dbname: "sonar"
+postgresql_user: "sonar"
+postgresql_password: "sonar"
+
+# 用户配置
+postgresql_user: "postgres"
+postgresql_group: "postgres"
+
+# 下载超时（秒）
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true
