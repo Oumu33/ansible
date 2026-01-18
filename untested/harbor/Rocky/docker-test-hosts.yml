@@ -1,0 +1,64 @@
+version: '3.8'
+
+# ============================================
+# Harbor测试环境
+# ============================================
+# 说明：Docker Compose配置，用于创建测试主机
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+services:
+  # Harbor服务器
+  harbor-1:
+    image: rockylinux:8
+    container_name: harbor-1
+    hostname: harbor-1
+    privileged: true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "5000:5000"
+      - "4443:4443"
+      - "8080:8080"
+    volumes:
+      - harbor-data:/data/harbor
+      - harbor-logs:/var/log/harbor
+    networks:
+      harbor-net:
+        ipv4_address: 172.22.0.40
+    # 内存限制：4GB
+    mem_limit: 4g
+    memswap_limit: 4g
+    mem_reservation: 2g
+    # CPU限制：2核
+    cpus: '2'
+    command: >
+      bash -c "
+        # 更新系统
+        dnf update -y &&
+        # 安装必要软件
+        dnf install -y openssh-server sudo vim net-tools wget curl python3 git &&
+        # 配置SSH
+        mkdir -p /var/run/sshd &&
+        echo 'root:root' | chpasswd &&
+        sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config &&
+        sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config &&
+        sed -i 's/#UsePAM yes/UsePAM no/' /etc/ssh/sshd_config &&
+        # 启动SSH
+        /usr/sbin/sshd -D &
+        # 保持容器运行
+        sleep infinity
+      "
+
+volumes:
+  harbor-data:
+  harbor-logs:
+
+networks:
+  harbor-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+          gateway: 172.22.0.1

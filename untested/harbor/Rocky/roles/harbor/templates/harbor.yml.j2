@@ -1,0 +1,121 @@
+# ============================================
+# Harbor配置文件
+# ============================================
+
+hostname: {{ harbor_hostname }}
+
+http:
+  port: 80
+
+https:
+  port: {{ harbor_port }}
+  certificate: /data/harbor/ssl/{{ harbor_hostname }}.crt
+  private_key: /data/harbor/ssl/{{ harbor_hostname }}.key
+
+# 外部URL
+external_url: {{ harbor_protocol }}://{{ harbor_hostname }}
+
+# Harbor管理员初始密码
+harbor_admin_password: {{ harbor_admin_password }}
+
+# 数据库配置
+database:
+  password: {{ harbor_db_password }}
+  max_idle_conns: 100
+  max_open_conns: 900
+
+# Redis配置
+redis:
+  addr: {{ harbor_redis_host }}:{{ harbor_redis_port }}
+  password: {{ harbor_redis_password }}
+
+# 日志配置
+log:
+  level: {{ harbor_log_level }}
+  rotate_count: {{ harbor_log_retention_days }}
+  rotate_size: {{ harbor_log_rotate_size }}
+
+# 存储配置
+storage:
+  filesystem:
+    maxsize: {{ harbor_storage_quota }}
+
+# 代理配置
+proxy:
+  http_proxy:
+  https_proxy:
+  no_proxy:
+    - 127.0.0.1
+    - .localhost
+    - .local
+    - .internal
+
+# 数据保留策略
+data_retention:
+  enabled: true
+  hours: 168
+
+# 项目创建限制
+project_creation_restriction: everyone
+
+# 扫描器配置
+scanner:
+  type: trivy
+  offline_scan: false
+  allow_disable_scanner: true
+  skip_pull: false
+
+# Notary配置
+notary:
+  enabled: true
+
+# Trivy配置
+trivy:
+  enabled: true
+  ignore_unfixed: false
+  skip_update: false
+  offline_scan: false
+  security_check: vuln
+
+# 通知配置
+notification:
+  webhook_job_max_retry: 10
+  webhook_job_pool_size: 10
+
+# 缓存配置
+cache:
+  enabled: false
+
+# Clair配置（已弃用）
+clair:
+  enabled: false
+
+# 复制策略
+replication:
+  policy:
+    default: false
+
+# Token服务配置
+token:
+  expiration: 30
+
+# Job服务配置
+job_service:
+  max_job_workers: 10
+
+# 核心服务配置
+core:
+  secret: {{ harbor_admin_password | hash('md5') }}
+  token_secret: {{ harbor_admin_password | hash('sha256') }}
+
+# 门户配置
+portal:
+  secret: {{ harbor_admin_password | hash('md5') }}
+
+# Registry配置
+registry:
+  secret: {{ harbor_admin_password | hash('md5') }}
+
+# Jobservice配置
+jobservice:
+  secret: {{ harbor_admin_password | hash('md5') }}

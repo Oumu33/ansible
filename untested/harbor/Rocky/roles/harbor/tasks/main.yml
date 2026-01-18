@@ -1,0 +1,77 @@
+---
+# Harbor 部署任务
+
+- name: 安装Docker和Docker Compose
+  ansible.builtin.package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+  become: true
+
+- name: 启动并启用Docker服务
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+  become: true
+
+- name: 创建Harbor安装目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  become: true
+  loop:
+    - "{{ harbor_install_dir }}"
+    - "{{ harbor_data_path }}"
+    - "{{ harbor_log_path }}"
+
+- name: 从控制节点复制Harbor安装包
+  ansible.builtin.copy:
+    src: /tmp/harbor-online-installer-v{{ harbor_version }}.tgz
+    dest: /tmp/harbor-installer.tgz
+    mode: '0644'
+  become: true
+
+- name: 解压Harbor安装包
+  ansible.builtin.unarchive:
+    src: /tmp/harbor-installer.tgz
+    dest: "{{ harbor_install_dir }}"
+    remote_src: true
+    creates: "{{ harbor_install_dir }}/install.sh"
+  become: true
+
+- name: 生成Harbor配置文件
+  ansible.builtin.template:
+    src: harbor.yml.j2
+    dest: "{{ harbor_config_path }}"
+    mode: '0644'
+  become: true
+  notify: restart harbor
+
+- name: 安装Harbor
+  ansible.builtin.command:
+    cmd: ./install.sh --with-trivy --with-notary
+    chdir: "{{ harbor_install_dir }}"
+    creates: "{{ harbor_data_path }}/jobservice/config.yml"
+  become: true
+
+- name: 等待Harbor服务启动
+  ansible.builtin.wait_for:
+    port: 80
+    delay: 10
+    timeout: 300
+  become: true
+
+- name: 验证Harbor服务状态
+  ansible.builtin.uri:
+    url: "http://localhost"
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 10
+  delay: 10
+  become: true

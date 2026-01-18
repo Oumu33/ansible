@@ -1,0 +1,10 @@
+---
+# Harbor 部署Playbook
+
+- name: 部署Harbor容器镜像仓库
+  hosts: harbor
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: harbor

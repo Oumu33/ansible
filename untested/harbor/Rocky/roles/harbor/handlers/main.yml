@@ -1,0 +1,14 @@
+---
+# Harbor handlers
+
+- name: restart harbor
+  ansible.builtin.command:
+    cmd: docker compose down && docker compose up -d
+    chdir: "{{ harbor_install_dir }}"
+  become: true
+
+- name: reload harbor
+  ansible.builtin.command:
+    cmd: docker compose reload
+    chdir: "{{ harbor_install_dir }}"
+  become: true

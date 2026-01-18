@@ -1,0 +1,18 @@
+---
+# ============================================
+# Harbor Docker测试主机清单
+# ============================================
+# 说明：Docker容器测试环境的主机清单
+# 作者：VictoriaMetrics-Full
+# 更新时间：2026-01-18
+# ============================================
+
+all:
+  children:
+    harbor:
+      hosts:
+        harbor-1:
+          ansible_host: 172.22.0.40
+          ansible_user: root
+          ansible_ssh_pass: root
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no'

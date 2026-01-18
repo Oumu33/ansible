@@ -1,0 +1,39 @@
+---
+# Harbor 全局变量
+
+# Harbor版本
+harbor_version: "2.11.0"
+
+# 安装目录
+harbor_install_dir: "/opt/harbor"
+harbor_data_dir: "/data/harbor"
+
+# Harbor配置
+harbor_hostname: "harbor.example.com"
+harbor_protocol: "https"
+harbor_port: 443
+
+# 数据库配置
+harbor_db_password: "Harbor12345"
+harbor_db_port: 5432
+
+# Redis配置
+harbor_redis_port: 6379
+
+# 管理员账户
+harbor_admin_password: "Harbor12345"
+
+# 存储配置
+harbor_storage_quota: "100GB"
+
+# 日志配置
+harbor_log_level: "info"
+harbor_log_rotate_size: "200M"
+harbor_log_retention_days: 7
+
+# 下载超时（秒）
+download_timeout: 1800
+
+# 服务状态
+service_state: "started"
+service_enabled: true
